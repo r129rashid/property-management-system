@@ -10,9 +10,9 @@ export const recordSchema = z.object({
     .string()
     .regex(/^[0-9]{12}$/, "Must be exactly 12 digits"),
   property_location: z.string().min(1, "Required"),
-  rent_amount: z.coerce.number().min(1, "Must be greater than 0"),
+  rent_amount: z.number().min(1, "Must be greater than 0"),
   due_date: z.string().min(1, "Required"),
-  amount_paid: z.boolean().default(false),
+  amount_paid: z.boolean(),
 })
 
 export type RecordFormData = z.infer<typeof recordSchema>

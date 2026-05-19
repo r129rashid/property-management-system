@@ -10,15 +10,13 @@
 ## Tasks
 
 - [x] Task 1: Project scaffolding (Next.js + deps + shadcn)
-- [ ] Task 2: Supabase clients + types
-- [ ] Task 3: Auth pages + middleware
-- [ ] Task 4: Layout shell + dark mode
-- [ ] Task 5: Records CRUD (table + form)
-- [ ] Task 6: Custom columns
-- [ ] Task 7: Dashboard (KPIs + charts)
-- [ ] Task 8: Document upload + activity log
-- [ ] Task 9: Receipt PDF
-- [ ] Task 10: Final TypeScript + responsive check
+- [x] Task 2: Supabase clients + types
+- [x] Task 3: Auth pages + middleware
+- [x] Task 4: Layout shell + dark mode
+- [x] Task 5: Records CRUD (table + form + PDF)
+- [x] Task 6: Dashboard (KPIs + area chart + donut chart + upcoming dues)
+- [x] Task 7: Document upload (Supabase Storage) + activity log page
+- [x] Task 8: Final TypeScript clean + production build verified + mobile drawer added
 
 ## Notes
 - Directory name has spaces → project created in propmanage/ then moved to root
