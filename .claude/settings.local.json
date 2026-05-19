@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(gstack)",
+      "Skill(gstack-upgrade)",
+      "Skill(superpowers:executing-plans)",
+      "Bash(npx shadcn@latest init -y)",
+      "Bash(npx shadcn@latest init --help)",
+      "Bash(npx shadcn@latest init --base radix --preset nova -y -f)",
+      "Bash(npx shadcn@latest add button input label dialog dropdown-menu table card form checkbox select textarea skeleton tabs badge separator scroll-area sheet avatar alert-dialog -y)",
+      "Bash(npx shadcn@latest add form sonner -y)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
