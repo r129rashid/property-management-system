@@ -78,12 +78,12 @@ const STATUS_CONFIG = {
 // ─── Activity log helper ──────────────────────────────────────────────────────
 function logActivity(action: string) {
   try {
-    const log = JSON.parse(localStorage.getItem("activity_log") ?? "[]") as {
+    const log = JSON.parse(localStorage.getItem("pms_activity_log") ?? "[]") as {
       action: string
       ts: string
     }[]
     log.unshift({ action, ts: new Date().toISOString() })
-    localStorage.setItem("activity_log", JSON.stringify(log.slice(0, 20)))
+    localStorage.setItem("pms_activity_log", JSON.stringify(log.slice(0, 20)))
   } catch {}
 }
 
