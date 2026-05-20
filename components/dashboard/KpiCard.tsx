@@ -5,6 +5,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { usePrivacy } from "./PrivacyProvider"
 
 const COLOR_MAP = {
   indigo: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
@@ -20,15 +21,19 @@ interface KpiCardProps {
   icon: React.ReactNode
   color: keyof typeof COLOR_MAP
   href?: string
+  subtitle?: string
 }
 
-export function KpiCard({ title, value, icon, color, href }: KpiCardProps) {
+export function KpiCard({ title, value, icon, color, href, subtitle }: KpiCardProps) {
+  const { hidden } = usePrivacy()
+  const displayValue = hidden && typeof value === "string" && value.startsWith("₹") ? "₹ ••••" : hidden && typeof value === "number" ? "••••" : value
   const card = (
     <Card className={cn("rounded-xl", href && "transition-shadow hover:shadow-md cursor-pointer")}>
       <CardContent className="p-5 flex items-start justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground font-medium">{title}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-2xl font-bold tracking-tight">{displayValue}</p>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         <div className={cn("p-2.5 rounded-lg shrink-0", COLOR_MAP[color])}>
           {icon}

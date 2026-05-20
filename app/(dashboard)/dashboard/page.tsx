@@ -5,6 +5,8 @@ import { KpiCard } from "@/components/dashboard/KpiCard"
 import { RentChart } from "@/components/dashboard/RentChart"
 import { StatusDonut } from "@/components/dashboard/StatusDonut"
 import { UpcomingDues } from "@/components/dashboard/UpcomingDues"
+import { PrivacyProvider } from "@/components/dashboard/PrivacyProvider"
+import { PrivacyToggle } from "@/components/dashboard/PrivacyToggle"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getRecordStatus, formatCurrency } from "@/lib/utils"
 import { Building2, Users, IndianRupee, AlertTriangle, Wallet, TrendingDown } from "lucide-react"
@@ -20,13 +22,19 @@ async function DashboardContent() {
 
   const rows: RecordRow[] = records ?? []
 
+  const now = new Date()
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" })
+
   const totalProperties = rows.length
   const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
-  const totalRent = rows.reduce((s, r) => s + r.rent_amount, 0)
-  const totalCollected = rows
+
+  const monthRows = rows.filter((r) => r.due_date?.startsWith(currentMonthStr))
+  const totalReceivable = monthRows.reduce((s, r) => s + r.rent_amount, 0)
+  const totalCollected = monthRows
     .filter((r) => r.amount_paid)
     .reduce((s, r) => s + r.rent_amount, 0)
-  const totalOutstanding = totalRent - totalCollected
+  const totalOutstanding = totalReceivable - totalCollected
 
   const overdueCount = rows.filter(
     (r) => getRecordStatus(r.due_date, r.amount_paid) === "overdue"
@@ -43,8 +51,7 @@ async function DashboardContent() {
     .filter((r) => getRecordStatus(r.due_date, r.amount_paid) !== "paid")
     .slice(0, 5)
 
-  // Build last-6-month rent collection data
-  const now = new Date()
+  // Last-6-month rent collection chart data
   const monthLabels = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
     return d.toLocaleString("default", { month: "short", year: "2-digit" })
@@ -60,7 +67,7 @@ async function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* KPI cards — row 1: portfolio counts */}
+      {/* KPI row 1 — portfolio counts */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <KpiCard
           title="Total Properties"
@@ -83,25 +90,28 @@ async function DashboardContent() {
         />
       </div>
 
-      {/* KPI cards — row 2: financials */}
+      {/* KPI row 2 — current-month financials */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <KpiCard
-          title="Total Receivable"
-          value={formatCurrency(totalRent)}
+          title="Receivable"
+          value={formatCurrency(totalReceivable)}
           icon={<IndianRupee className="h-5 w-5" />}
           color="indigo"
+          subtitle={currentMonthLabel}
         />
         <KpiCard
-          title="Total Collected"
+          title="Collected"
           value={formatCurrency(totalCollected)}
           icon={<Wallet className="h-5 w-5" />}
           color="emerald"
+          subtitle={currentMonthLabel}
         />
         <KpiCard
           title="Outstanding"
           value={formatCurrency(totalOutstanding)}
           icon={<TrendingDown className="h-5 w-5" />}
           color="amber"
+          subtitle={currentMonthLabel}
         />
       </div>
 
@@ -156,17 +166,28 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
+  const today = new Date()
+  const formattedDate = today.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">
-          Overview of your rental portfolio
-        </p>
+    <PrivacyProvider>
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
+            <p className="text-sm text-muted-foreground">{formattedDate}</p>
+          </div>
+          <PrivacyToggle />
+        </div>
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardContent />
+        </Suspense>
       </div>
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </div>
+    </PrivacyProvider>
   )
 }
