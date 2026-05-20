@@ -47,6 +47,30 @@ No known bugs. All features working. Dark mode is the default across the entire 
 - Auth relies solely on in-page `redirect()` calls — no route-level protection
 - **Fix:** rename → `middleware.ts`, change to `export default async function middleware`
 
+### Session 5: Paid status controls — desktop + mobile
+| What | Files |
+|------|-------|
+| Three-dot menu: "Mark as paid" (green) when unpaid; "Mark as unpaid" when paid | `components/table/RecordsTable.tsx` |
+| Desktop quick action: "Mark as paid" button when unpaid; static green "Paid" label when paid | `components/table/RecordsTable.tsx` |
+| Mobile bug fix: quick "Mark as paid" button was missing — root cause was mobile cards bypass TanStack columns entirely; added button directly to card layout | `components/table/RecordsTable.tsx` |
+| Mobile three-dot: "Mark as paid" when unpaid; "Mark as unpaid" + "Download receipt" when paid | `components/table/RecordsTable.tsx` |
+| Added `handleMarkUnpaid` handler — sets `amount_paid: false` in Supabase | `components/table/RecordsTable.tsx` |
+
+## Key Conventions (for next session)
+- **Dark mode**: `ThemeProvider defaultTheme="dark"` — dark is the default; user can toggle via header button
+- **Auth layout**: `"use client"` — uses Framer Motion; adds `class="dark"` to wrapper so login is always dark regardless of toggle
+- **Remember Me key**: `pms_remembered_email` in localStorage (email only, never password)
+- **KpiCard href**: pass `href` prop to make a card clickable; links to `/records?status=X`
+- **RecordsTable filter from URL**: navigate to `/records?status=overdue|paid|unpaid` to pre-filter on load
+- **Mobile records**: uses custom card rendering (not TanStack Table columns) — any action added to the `actions` column cell will NOT appear on mobile; must be added to the card JSX separately
+
+## Known Open Issue
+`proxy.ts` at project root is NOT recognised by Next.js as middleware:
+- Named `proxy.ts` instead of `middleware.ts`
+- Exports `proxy` instead of a default export
+- Auth relies solely on in-page `redirect()` calls — no route-level protection
+- **Fix:** rename → `middleware.ts`, change to `export default async function middleware`
+
 ## What the Next Session Could Do
 - Implement "Generate Agreement" — PDF generation with tenant/property details (jsPDF already installed)
 - Fix the middleware naming issue above for proper route-level auth protection

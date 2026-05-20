@@ -27,6 +27,7 @@ import {
   MoreVertical,
   FileText,
   CheckCircle2,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -264,8 +265,7 @@ export function RecordsTable({
           const status = getRecordStatus(rec.due_date, rec.amount_paid)
           return (
             <div className="flex items-center gap-1">
-              {/* Quick action: mark as paid — only shown when not yet paid */}
-              {status !== "paid" && (
+              {status !== "paid" ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -273,8 +273,13 @@ export function RecordsTable({
                   onClick={() => handleMarkPaid(rec.id)}
                 >
                   <CheckCircle2 className="h-3 w-3" />
-                  Paid
+                  Mark as paid
                 </Button>
+              ) : (
+                <span className="flex items-center gap-1 px-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Paid
+                </span>
               )}
               {/* Three-dot menu */}
               <DropdownMenu>
@@ -284,7 +289,7 @@ export function RecordsTable({
                     <span className="sr-only">Open menu</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem
                     onClick={() => {
                       setEditRecord(rec)
@@ -294,6 +299,20 @@ export function RecordsTable({
                     <Pencil className="h-3.5 w-3.5 mr-2" />
                     Edit
                   </DropdownMenuItem>
+                  {status !== "paid" ? (
+                    <DropdownMenuItem
+                      className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
+                      onClick={() => handleMarkPaid(rec.id)}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                      Mark as paid
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => handleMarkUnpaid(rec.id)}>
+                      <XCircle className="h-3.5 w-3.5 mr-2" />
+                      Mark as unpaid
+                    </DropdownMenuItem>
+                  )}
                   {status === "paid" && (
                     <DropdownMenuItem onClick={() => generatePDF(rec)}>
                       <Download className="h-3.5 w-3.5 mr-2" />
@@ -432,6 +451,18 @@ export function RecordsTable({
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: true } : r)))
     toast.success("Marked as paid")
     logActivity(`Marked ${rec?.tenant_name} as paid`)
+  }
+
+  const handleMarkUnpaid = async (id: string) => {
+    const rec = records.find((r) => r.id === id)
+    const { error } = await supabase
+      .from("records")
+      .update({ amount_paid: false })
+      .eq("id", id)
+    if (error) { toast.error(error.message); return }
+    setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: false } : r)))
+    toast.success("Marked as unpaid")
+    logActivity(`Marked ${rec?.tenant_name} as unpaid`)
   }
 
   const selectedCount = Object.keys(rowSelection).length
@@ -575,7 +606,7 @@ export function RecordsTable({
                   </span>
                   <span>Due {formatDate(rec.due_date)}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <Button
                     variant="outline"
                     size="sm"
@@ -587,24 +618,64 @@ export function RecordsTable({
                   >
                     Edit
                   </Button>
-                  {status === "paid" && (
+                  {status !== "paid" ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8"
-                      onClick={() => generatePDF(rec)}
+                      className="h-8 text-xs text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1"
+                      onClick={() => handleMarkPaid(rec.id)}
                     >
-                      <Download className="h-3 w-3" />
+                      <CheckCircle2 className="h-3 w-3" />
+                      Mark as paid
                     </Button>
+                  ) : (
+                    <span className="flex items-center gap-1 px-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Paid
+                    </span>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-destructive border-destructive/30 hover:bg-destructive/5"
-                    onClick={() => setDeleteId(rec.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 w-8 px-0 shrink-0">
+                        <MoreVertical className="h-3 w-3" />
+                        <span className="sr-only">More</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      {status !== "paid" ? (
+                        <DropdownMenuItem
+                          className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
+                          onClick={() => handleMarkPaid(rec.id)}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                          Mark as paid
+                        </DropdownMenuItem>
+                      ) : (
+                        <>
+                          <DropdownMenuItem onClick={() => handleMarkUnpaid(rec.id)}>
+                            <XCircle className="h-3.5 w-3.5 mr-2" />
+                            Mark as unpaid
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => generatePDF(rec)}>
+                            <Download className="h-3.5 w-3.5 mr-2" />
+                            Download receipt
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuItem disabled>
+                        <FileText className="h-3.5 w-3.5 mr-2" />
+                        Generate agreement
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteId(rec.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </motion.div>
             )
