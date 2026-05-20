@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DocumentUpload } from "@/components/shared/DocumentUpload"
-import { cn, formatCurrency, maskAadhar, getRecordStatus, formatDate } from "@/lib/utils"
+import { cn, formatCurrency, maskAadhar, getRecordStatus, formatDueDay } from "@/lib/utils"
 
 const STATUS_CONFIG = {
   paid: {
@@ -43,7 +43,7 @@ export default async function RecordDetailPage({
   if (!record) notFound()
 
   const { data: columns } = await supabase.from("custom_columns").select("*")
-  const status = getRecordStatus(record.due_date, record.amount_paid)
+  const status = getRecordStatus(record.due_day, record.amount_paid)
   const cfg = STATUS_CONFIG[status]
 
   const coreFields: [string, string][] = [
@@ -51,7 +51,7 @@ export default async function RecordDetailPage({
     ["Contact", record.contact_number],
     ["Aadhar", maskAadhar(record.aadhar_number)],
     ["Rent Amount", formatCurrency(record.rent_amount)],
-    ["Due Date", formatDate(record.due_date)],
+    ["Due Day", `${formatDueDay(record.due_day)} of every month`],
     ["Paid", record.amount_paid ? "Yes" : "No"],
     ["Location", record.property_location],
   ]

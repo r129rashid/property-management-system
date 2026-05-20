@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Building2, LayoutDashboard, FileText, Clock, LogOut } from "lucide-react"
+import { Building2, LayoutDashboard, FileText, Clock, LogOut, Settings2 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/records", label: "Records", icon: FileText },
   { href: "/activity", label: "Activity", icon: Clock },
+  { href: "/admin", label: "Admin", icon: Settings2 },
 ]
 
 export function Sidebar() {

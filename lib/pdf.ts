@@ -1,6 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-import { formatCurrency, formatDate, generateReceiptNumber, maskAadhar } from "./utils"
+import { formatCurrency, formatDate, formatDueDay, generateReceiptNumber, maskAadhar } from "./utils"
 import type { RecordRow } from "@/types/database"
 
 export function generatePDF(record: RecordRow): void {
@@ -34,7 +34,7 @@ export function generatePDF(record: RecordRow): void {
       ["Contact", record.contact_number],
       ["Aadhar", maskAadhar(record.aadhar_number)],
       ["Location", record.property_location],
-      ["Rent Due Date", formatDate(record.due_date)],
+      ["Rent Due Day", `${formatDueDay(record.due_day)} of every month`],
       ["Payment Status", "PAID ✓"],
     ],
     columnStyles: {

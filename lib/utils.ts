@@ -21,14 +21,22 @@ export function maskAadhar(aadhar: string): string {
 
 export type RecordStatus = "paid" | "due-soon" | "overdue"
 
-export function getRecordStatus(dueDate: string, amountPaid: boolean): RecordStatus {
+export function getRecordStatus(dueDay: number, amountPaid: boolean): RecordStatus {
   if (amountPaid) return "paid"
-  const due = new Date(dueDate)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  if (isBefore(due, today)) return "overdue"
-  if (isBefore(due, addDays(today, 6))) return "due-soon"
+  const thisMonthDue = new Date(today.getFullYear(), today.getMonth(), dueDay)
+  if (isBefore(thisMonthDue, today)) return "overdue"
+  if (isBefore(thisMonthDue, addDays(today, 6))) return "due-soon"
   return "due-soon"
+}
+
+export function formatDueDay(day: number): string {
+  const s = day % 10
+  const t = day % 100
+  const suffix =
+    t >= 11 && t <= 13 ? "th" : s === 1 ? "st" : s === 2 ? "nd" : s === 3 ? "rd" : "th"
+  return `${day}${suffix}`
 }
 
 export function formatDate(date: string): string {

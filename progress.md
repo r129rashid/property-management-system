@@ -40,3 +40,70 @@
 - Login Remember Me: saves email to localStorage key `pms_remembered_email`; never saves password
 - Brand name throughout: "Abhay's PMS"
 - `proxy.ts` is NOT picked up by Next.js as middleware — must rename to `middleware.ts` and use `export default async function middleware` (known open issue)
+
+---
+
+## V2 — Monthly Rent Cycle System
+
+### Overview
+Convert from flat snapshot model to a proper monthly rent cycle.
+Each lease (record) has a recurring due day. Every month generates payment entries.
+Full payment history per tenant. Carry-forward and excuse actions in an admin console.
+
+### Data Model Changes
+
+**`records` table (becomes lease config)**
+- Remove: `due_date` (calendar date) → make nullable during transition, backfill `due_day` from it
+- Add: `due_day` integer 1–28 — "rent is due on the Nth of every month"
+
+**New: `rent_payments` table**
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid | PK |
+| `record_id` | uuid | FK → records (CASCADE) |
+| `user_id` | uuid | FK → auth.users (RLS) |
+| `month` | text | YYYY-MM |
+| `amount_due` | numeric | snapshot of rent_amount at generation time |
+| `paid` | boolean | default false |
+| `paid_on` | date | nullable |
+| `excused` | boolean | default false |
+| `carried_from` | uuid | nullable FK → rent_payments |
+| `notes` | text | nullable |
+| `created_at` | timestamptz | |
+| UNIQUE | (record_id, month) | one entry per tenant per month |
+
+### Build Phases
+
+**Phase 1 — DB Migration** ← USER ACTION REQUIRED
+- [x] Migration SQL written → `supabase-migration-v2.sql`
+- [ ] Run `supabase-migration-v2.sql` in Supabase SQL editor
+
+**Phase 2 — Core: due_date → due_day**
+- [x] `types/database.ts` — add due_day, nullable due_date, add rent_payments types
+- [x] `lib/validations/record.ts` — swap due_date for due_day (z.number 1–28)
+- [x] `lib/utils.ts` — getRecordStatus(dueDay: number), add formatDueDay()
+- [x] `components/forms/RecordForm.tsx` — date picker → day-of-month number input
+- [x] `components/table/RecordsTable.tsx` — update column display + all status logic
+- [x] `components/dashboard/UpcomingDues.tsx` — formatDueDay instead of formatDate
+- [x] `app/(dashboard)/records/[id]/page.tsx` — due_day in detail + payment history
+- [x] `lib/pdf.ts` — "Due on Xth of every month" in receipt
+- [x] `app/(dashboard)/dashboard/page.tsx` — updated getRecordStatus calls
+
+**Phase 3 — Admin Console + Payment Log**
+- [x] `supabase-migration-v2.sql` — rent_payments table + RLS
+- [x] `app/(dashboard)/admin/page.tsx` — admin console page
+- [x] `components/admin/AdminConsole.tsx` — generate month / mark paid / carry forward / excuse
+- [x] Payment history on record detail page
+
+**Phase 4 — Dashboard Month Picker** ← next session
+- [ ] Month picker (prev/next) in dashboard header
+- [ ] Financial KPIs query rent_payments for selected month
+- [ ] 6-month chart pulls from rent_payments grouped by month
+
+### Key V2 Conventions
+- `due_day` is integer 1–28. Never 29–31 (avoids Feb edge case).
+- `getRecordStatus(dueDay, amountPaid)` — computes against current month's Nth day.
+- `rent_payments.month` is always `YYYY-MM`. UNIQUE(record_id, month) enforced at DB.
+- Excused payments excluded from Outstanding and not counted as Overdue.
+- Carry-forward: new payment row, `amount_due = base_rent + prev_unpaid`, `carried_from = prev_id`.
+- Admin console at `/admin`. Sidebar link included.

@@ -63,7 +63,7 @@ export function RecordForm({
         aadhar_number: defaultValues?.aadhar_number ?? "",
         property_location: defaultValues?.property_location ?? "",
         rent_amount: defaultValues?.rent_amount ?? (undefined as unknown as number),
-        due_date: defaultValues?.due_date ?? "",
+        due_day: defaultValues?.due_day ?? (undefined as unknown as number),
         amount_paid: defaultValues?.amount_paid ?? false,
       })
     }
@@ -190,10 +190,19 @@ export function RecordForm({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="due_date">Due Date</Label>
-              <Input id="due_date" type="date" {...register("due_date")} />
-              {errors.due_date && (
-                <p className="text-xs text-destructive">{errors.due_date.message}</p>
+              <Label htmlFor="due_day">Due Day of Month</Label>
+              <Input
+                id="due_day"
+                type="number"
+                min={1}
+                max={28}
+                placeholder="e.g. 5"
+                inputMode="numeric"
+                {...register("due_day", { valueAsNumber: true })}
+              />
+              <p className="text-xs text-muted-foreground">1–28 (day rent is due each month)</p>
+              {errors.due_day && (
+                <p className="text-xs text-destructive">{errors.due_day.message}</p>
               )}
             </div>
           </div>

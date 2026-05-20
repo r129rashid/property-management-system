@@ -65,6 +65,7 @@ import {
   formatCurrency,
   maskAadhar,
   getRecordStatus,
+  formatDueDay,
   formatDate,
 } from "@/lib/utils"
 import { generatePDF } from "@/lib/pdf"
@@ -140,7 +141,7 @@ export function RecordsTable({
   // ── Filter ────────────────────────────────────────────────────────────────
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
-      const status = getRecordStatus(r.due_date, r.amount_paid)
+      const status = getRecordStatus(r.due_day, r.amount_paid)
       if (statusFilter === "paid" && !r.amount_paid) return false
       if (statusFilter === "unpaid" && r.amount_paid) return false
       if (statusFilter === "overdue" && status !== "overdue") return false
@@ -221,24 +222,19 @@ export function RecordsTable({
         ),
       },
       {
-        accessorKey: "due_date",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 font-medium"
-            onClick={() => column.toggleSorting()}
-          >
-            Due Date <ArrowUpDown className="ml-1 h-3 w-3" />
-          </Button>
+        accessorKey: "due_day",
+        header: "Due Day",
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {formatDueDay(row.original.due_day)} of month
+          </span>
         ),
-        cell: ({ row }) => formatDate(row.original.due_date),
       },
       {
         id: "status",
         header: "Status",
         cell: ({ row }) => {
-          const s = getRecordStatus(row.original.due_date, row.original.amount_paid)
+          const s = getRecordStatus(row.original.due_day, row.original.amount_paid)
           const cfg = STATUS_CONFIG[s]
           return (
             <Badge className={cn("text-xs font-medium border-0", cfg.cls)}>
@@ -262,7 +258,7 @@ export function RecordsTable({
         id: "actions",
         cell: ({ row }) => {
           const rec = row.original
-          const status = getRecordStatus(rec.due_date, rec.amount_paid)
+          const status = getRecordStatus(rec.due_day, rec.amount_paid)
           return (
             <div className="flex items-center gap-1">
               {status !== "paid" ? (
@@ -582,7 +578,7 @@ export function RecordsTable({
           <EmptyState onAdd={() => setShowForm(true)} />
         ) : (
           filteredRecords.map((rec) => {
-            const status = getRecordStatus(rec.due_date, rec.amount_paid)
+            const status = getRecordStatus(rec.due_day, rec.amount_paid)
             const cfg = STATUS_CONFIG[status]
             return (
               <motion.div
@@ -604,7 +600,7 @@ export function RecordsTable({
                   <span className="font-semibold text-foreground">
                     {formatCurrency(rec.rent_amount)}
                   </span>
-                  <span>Due {formatDate(rec.due_date)}</span>
+                  <span>Due on {formatDueDay(rec.due_day)}</span>
                 </div>
                 <div className="flex gap-2 items-center">
                   <Button

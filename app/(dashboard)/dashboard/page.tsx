@@ -35,31 +35,32 @@ async function DashboardContent() {
   const totalOutstanding = totalReceivable - totalCollected
 
   const overdueCount = rows.filter(
-    (r) => getRecordStatus(r.due_date, r.amount_paid) === "overdue"
+    (r) => getRecordStatus(r.due_day, r.amount_paid) === "overdue"
   ).length
 
   const paidCount = rows.filter(
-    (r) => getRecordStatus(r.due_date, r.amount_paid) === "paid"
+    (r) => getRecordStatus(r.due_day, r.amount_paid) === "paid"
   ).length
   const dueSoonCount = rows.filter(
-    (r) => getRecordStatus(r.due_date, r.amount_paid) === "due-soon"
+    (r) => getRecordStatus(r.due_day, r.amount_paid) === "due-soon"
   ).length
 
   const upcoming = rows
-    .filter((r) => getRecordStatus(r.due_date, r.amount_paid) !== "paid")
+    .filter((r) => getRecordStatus(r.due_day, r.amount_paid) !== "paid")
     .slice(0, 5)
 
-  // Last-6-month rent collection chart data
-  const monthLabels = Array.from({ length: 6 }, (_, i) => {
+  // Last-6-month chart data — sourced from rent_payments
+  const { data: rentPayments } = await supabase
+    .from("rent_payments")
+    .select("month, amount_due, paid")
+
+  const chartData = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
-    return d.toLocaleString("default", { month: "short", year: "2-digit" })
-  })
-  const chartData = monthLabels.map((label, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    const label = d.toLocaleString("default", { month: "short", year: "2-digit" })
     const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    const collected = rows
-      .filter((r) => r.amount_paid && r.due_date?.startsWith(monthStr))
-      .reduce((s, r) => s + r.rent_amount, 0)
+    const collected = (rentPayments ?? [])
+      .filter((p) => p.month === monthStr && p.paid)
+      .reduce((s, p) => s + p.amount_due, 0)
     return { month: label, collected }
   })
 

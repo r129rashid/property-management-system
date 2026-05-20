@@ -19,7 +19,8 @@ export type Database = {
           aadhar_number: string
           property_location: string
           rent_amount: number
-          due_date: string
+          due_day: number
+          due_date: string | null
           amount_paid: boolean
           custom_fields: Json
           created_at: string
@@ -34,7 +35,8 @@ export type Database = {
           aadhar_number: string
           property_location: string
           rent_amount: number
-          due_date: string
+          due_day: number
+          due_date?: string | null
           amount_paid?: boolean
           custom_fields?: Json
           created_at?: string
@@ -49,11 +51,54 @@ export type Database = {
           aadhar_number?: string
           property_location?: string
           rent_amount?: number
-          due_date?: string
+          due_day?: number
+          due_date?: string | null
           amount_paid?: boolean
           custom_fields?: Json
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rent_payments: {
+        Row: {
+          id: string
+          record_id: string
+          user_id: string
+          month: string
+          amount_due: number
+          paid: boolean
+          paid_on: string | null
+          excused: boolean
+          carried_from: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          record_id: string
+          user_id: string
+          month: string
+          amount_due: number
+          paid?: boolean
+          paid_on?: string | null
+          excused?: boolean
+          carried_from?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          record_id?: string
+          user_id?: string
+          month?: string
+          amount_due?: number
+          paid?: boolean
+          paid_on?: string | null
+          excused?: boolean
+          carried_from?: string | null
+          notes?: string | null
+          created_at?: string
         }
         Relationships: []
       }
@@ -93,3 +138,6 @@ export type RecordRow = Database["public"]["Tables"]["records"]["Row"]
 export type RecordInsert = Database["public"]["Tables"]["records"]["Insert"]
 export type RecordUpdate = Database["public"]["Tables"]["records"]["Update"]
 export type CustomColumnRow = Database["public"]["Tables"]["custom_columns"]["Row"]
+export type RentPaymentRow = Database["public"]["Tables"]["rent_payments"]["Row"]
+export type RentPaymentInsert = Database["public"]["Tables"]["rent_payments"]["Insert"]
+export type RentPaymentUpdate = Database["public"]["Tables"]["rent_payments"]["Update"]
