@@ -42,12 +42,6 @@ async function DashboardContent() {
     return Math.round((daysActive / daysInMonth) * rec.rent_amount)
   }
 
-  const totalReceivable = rows.reduce((s, r) => s + getProratedAmount(r), 0)
-  const totalCollected = rows
-    .filter((r) => r.amount_paid)
-    .reduce((s, r) => s + getProratedAmount(r), 0)
-  const totalOutstanding = totalReceivable - totalCollected
-
   const overdueCount = rows.filter(
     (r) => getRecordStatus(r.due_day, r.amount_paid) === "overdue"
   ).length
@@ -63,11 +57,37 @@ async function DashboardContent() {
     .filter((r) => getRecordStatus(r.due_day, r.amount_paid) !== "paid")
     .slice(0, 5)
 
-  // Last-6-month chart data — sourced from rent_payments
+  // Fetch all rent_payments — used for both KPIs and chart
   const { data: rentPayments } = await supabase
     .from("rent_payments")
-    .select("month, amount_due, paid")
+    .select("record_id, month, amount_due, paid, excused, notes")
 
+  // Build payment map for current month to refine KPI accuracy
+  type PaymentEntry = { record_id: string; amount_due: number; paid: boolean; excused: boolean; notes: string | null }
+  const paymentMap: Record<string, PaymentEntry> = {}
+  for (const p of (rentPayments ?? []).filter((p) => p.month === currentMonthStr)) {
+    if (p.record_id) paymentMap[p.record_id] = p as PaymentEntry
+  }
+
+  // Recalculate financials using payment ledger when entries exist
+  let totalReceivable = 0
+  let totalCollected = 0
+  for (const rec of rows) {
+    const payment = paymentMap[rec.id]
+    if (payment) {
+      if (payment.excused) continue // waived — skip entirely
+      if (payment.notes === "carried") continue // debt moved to next month
+      totalReceivable += payment.amount_due
+      if (payment.paid) totalCollected += payment.amount_due
+    } else {
+      const amount = getProratedAmount(rec)
+      totalReceivable += amount
+      if (rec.amount_paid) totalCollected += amount
+    }
+  }
+  const totalOutstanding = totalReceivable - totalCollected
+
+  // Last-6-month chart data — sourced from rent_payments
   const chartData = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
     const label = d.toLocaleString("default", { month: "short", year: "2-digit" })

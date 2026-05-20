@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { RecordsTable } from "@/components/table/RecordsTable"
 import { SkeletonTable } from "@/components/shared/SkeletonTable"
+import type { RentPaymentRow } from "@/types/database"
 
 async function RecordsContent() {
   const supabase = await createClient()
@@ -11,16 +12,24 @@ async function RecordsContent() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const [{ data: records }, { data: columns }] = await Promise.all([
+  const now = new Date()
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+
+  const [{ data: records }, { data: columns }, { data: payments }] = await Promise.all([
     supabase.from("records").select("*").order("created_at", { ascending: false }),
     supabase.from("custom_columns").select("*").order("created_at"),
+    supabase.from("rent_payments").select("*").eq("month", currentMonthStr),
   ])
+
+  const paymentMap: Record<string, RentPaymentRow> = {}
+  for (const p of payments ?? []) paymentMap[p.record_id] = p
 
   return (
     <RecordsTable
       initialRecords={records ?? []}
       customColumns={columns ?? []}
       userId={user.id}
+      currentMonthPayments={paymentMap}
     />
   )
 }

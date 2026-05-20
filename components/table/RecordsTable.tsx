@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   useReactTable,
@@ -28,6 +28,7 @@ import {
   FileText,
   CheckCircle2,
   XCircle,
+  History,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,6 +56,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { RecordForm } from "@/components/forms/RecordForm"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -69,7 +77,7 @@ import {
   formatDate,
 } from "@/lib/utils"
 import { generatePDF } from "@/lib/pdf"
-import type { RecordRow, CustomColumnRow, Json } from "@/types/database"
+import type { RecordRow, CustomColumnRow, Json, RentPaymentRow } from "@/types/database"
 import type { RecordFormData } from "@/lib/validations/record"
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -86,7 +94,128 @@ const STATUS_CONFIG = {
     label: "Overdue",
     cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   },
+  excused: {
+    label: "Excused",
+    cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  },
+  carried: {
+    label: "Carried Fwd",
+    cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
 } as const
+
+type EffectiveStatus = keyof typeof STATUS_CONFIG
+
+function getEffectiveStatus(rec: RecordRow, payment?: RentPaymentRow): EffectiveStatus {
+  if (payment?.excused) return "excused"
+  if (payment?.notes === "carried") return "carried"
+  if (payment?.paid) return "paid"
+  return getRecordStatus(rec.due_day, rec.amount_paid)
+}
+
+// ─── Payment History Dialog ───────────────────────────────────────────────────
+function PaymentHistoryDialog({
+  record,
+  open,
+  onClose,
+}: {
+  record: RecordRow | null
+  open: boolean
+  onClose: () => void
+}) {
+  const supabase = createClient()
+  const [payments, setPayments] = useState<RentPaymentRow[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !record) return
+    setLoading(true)
+    supabase
+      .from("rent_payments")
+      .select("*")
+      .eq("record_id", record.id)
+      .order("month", { ascending: false })
+      .then(({ data }) => {
+        setPayments(data ?? [])
+        setLoading(false)
+      })
+  }, [open, record?.id])
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Payment History</DialogTitle>
+          <DialogDescription>
+            {record?.tenant_name} · {record?.property_name}
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="text-center text-sm text-muted-foreground py-8">Loading…</div>
+        ) : payments.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground py-8">
+            No payment history yet. Use the Admin console to generate monthly entries.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs">Month</TableHead>
+                <TableHead className="text-xs">Amount Due</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs">Paid On</TableHead>
+                <TableHead className="text-xs">Notes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments.map((p) => {
+                let statusLabel = "Unpaid"
+                let statusCls =
+                  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                if (p.paid) {
+                  statusLabel = "Paid"
+                  statusCls =
+                    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                } else if (p.excused) {
+                  statusLabel = "Excused"
+                  statusCls =
+                    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                } else if (p.notes === "carried") {
+                  statusLabel = "Carried Fwd"
+                  statusCls =
+                    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                } else if (p.carried_from) {
+                  statusLabel = "Carry-in"
+                  statusCls =
+                    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                }
+                return (
+                  <TableRow key={p.id} className="border-b border-border/30">
+                    <TableCell className="text-sm font-medium py-3">{p.month}</TableCell>
+                    <TableCell className="text-sm py-3 font-semibold">
+                      {formatCurrency(p.amount_due)}
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge className={cn("border-0 text-xs", statusCls)}>
+                        {statusLabel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm py-3 text-muted-foreground">
+                      {p.paid_on ? formatDate(p.paid_on) : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs py-3 text-muted-foreground">
+                      {p.carried_from ? "Carried from prev. month" : (p.notes ?? "—")}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ─── Activity log helper ──────────────────────────────────────────────────────
 function logActivity(action: string) {
@@ -105,6 +234,7 @@ interface RecordsTableProps {
   initialRecords: RecordRow[]
   customColumns: CustomColumnRow[]
   userId: string
+  currentMonthPayments?: Record<string, RentPaymentRow>
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -112,6 +242,7 @@ export function RecordsTable({
   initialRecords,
   customColumns: initCols,
   userId,
+  currentMonthPayments = {},
 }: RecordsTableProps) {
   const supabase = createClient()
   const searchParams = useSearchParams()
@@ -137,17 +268,18 @@ export function RecordsTable({
   const [formLoading, setFormLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showAddColumn, setShowAddColumn] = useState(false)
+  const [historyRecord, setHistoryRecord] = useState<RecordRow | null>(null)
 
   // ── Filter ────────────────────────────────────────────────────────────────
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
-      const status = getRecordStatus(r.due_day, r.amount_paid)
-      if (statusFilter === "paid" && !r.amount_paid) return false
-      if (statusFilter === "unpaid" && r.amount_paid) return false
+      const status = getEffectiveStatus(r, currentMonthPayments[r.id])
+      if (statusFilter === "paid" && status !== "paid") return false
+      if (statusFilter === "unpaid" && (status === "paid" || status === "excused")) return false
       if (statusFilter === "overdue" && status !== "overdue") return false
       return true
     })
-  }, [records, statusFilter])
+  }, [records, statusFilter, currentMonthPayments])
 
   // ── Columns ───────────────────────────────────────────────────────────────
   const columns = useMemo<ColumnDef<RecordRow>[]>(
@@ -234,7 +366,7 @@ export function RecordsTable({
         id: "status",
         header: "Status",
         cell: ({ row }) => {
-          const s = getRecordStatus(row.original.due_day, row.original.amount_paid)
+          const s = getEffectiveStatus(row.original, currentMonthPayments[row.original.id])
           const cfg = STATUS_CONFIG[s]
           return (
             <Badge className={cn("text-xs font-medium border-0", cfg.cls)}>
@@ -258,10 +390,11 @@ export function RecordsTable({
         id: "actions",
         cell: ({ row }) => {
           const rec = row.original
-          const status = getRecordStatus(rec.due_day, rec.amount_paid)
+          const status = getEffectiveStatus(rec, currentMonthPayments[rec.id])
+          const isActionable = status !== "paid" && status !== "excused" && status !== "carried"
           return (
             <div className="flex items-center gap-1">
-              {status !== "paid" ? (
+              {isActionable ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -271,13 +404,12 @@ export function RecordsTable({
                   <CheckCircle2 className="h-3 w-3" />
                   Mark as paid
                 </Button>
-              ) : (
+              ) : status === "paid" ? (
                 <span className="flex items-center gap-1 px-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="h-3 w-3" />
                   Paid
                 </span>
-              )}
-              {/* Three-dot menu */}
+              ) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -295,7 +427,11 @@ export function RecordsTable({
                     <Pencil className="h-3.5 w-3.5 mr-2" />
                     Edit
                   </DropdownMenuItem>
-                  {status !== "paid" ? (
+                  <DropdownMenuItem onClick={() => setHistoryRecord(rec)}>
+                    <History className="h-3.5 w-3.5 mr-2" />
+                    Payment History
+                  </DropdownMenuItem>
+                  {isActionable ? (
                     <DropdownMenuItem
                       className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
                       onClick={() => handleMarkPaid(rec.id)}
@@ -303,12 +439,12 @@ export function RecordsTable({
                       <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
                       Mark as paid
                     </DropdownMenuItem>
-                  ) : (
+                  ) : status === "paid" ? (
                     <DropdownMenuItem onClick={() => handleMarkUnpaid(rec.id)}>
                       <XCircle className="h-3.5 w-3.5 mr-2" />
                       Mark as unpaid
                     </DropdownMenuItem>
-                  )}
+                  ) : null}
                   {status === "paid" && (
                     <DropdownMenuItem onClick={() => generatePDF(rec)}>
                       <Download className="h-3.5 w-3.5 mr-2" />
@@ -334,7 +470,7 @@ export function RecordsTable({
         },
       },
     ],
-    [customColumns]
+    [customColumns, currentMonthPayments]
   )
 
   // ── Table instance ────────────────────────────────────────────────────────
@@ -578,8 +714,9 @@ export function RecordsTable({
           <EmptyState onAdd={() => setShowForm(true)} />
         ) : (
           filteredRecords.map((rec) => {
-            const status = getRecordStatus(rec.due_day, rec.amount_paid)
+            const status = getEffectiveStatus(rec, currentMonthPayments[rec.id])
             const cfg = STATUS_CONFIG[status]
+            const isActionable = status !== "paid" && status !== "excused" && status !== "carried"
             return (
               <motion.div
                 key={rec.id}
@@ -614,7 +751,7 @@ export function RecordsTable({
                   >
                     Edit
                   </Button>
-                  {status !== "paid" ? (
+                  {isActionable ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -624,12 +761,12 @@ export function RecordsTable({
                       <CheckCircle2 className="h-3 w-3" />
                       Mark as paid
                     </Button>
-                  ) : (
+                  ) : status === "paid" ? (
                     <span className="flex items-center gap-1 px-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
                       <CheckCircle2 className="h-3 w-3" />
                       Paid
                     </span>
-                  )}
+                  ) : null}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="h-8 w-8 px-0 shrink-0">
@@ -638,7 +775,11 @@ export function RecordsTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                      {status !== "paid" ? (
+                      <DropdownMenuItem onClick={() => setHistoryRecord(rec)}>
+                        <History className="h-3.5 w-3.5 mr-2" />
+                        Payment History
+                      </DropdownMenuItem>
+                      {isActionable ? (
                         <DropdownMenuItem
                           className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
                           onClick={() => handleMarkPaid(rec.id)}
@@ -646,7 +787,7 @@ export function RecordsTable({
                           <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
                           Mark as paid
                         </DropdownMenuItem>
-                      ) : (
+                      ) : status === "paid" ? (
                         <>
                           <DropdownMenuItem onClick={() => handleMarkUnpaid(rec.id)}>
                             <XCircle className="h-3.5 w-3.5 mr-2" />
@@ -657,7 +798,7 @@ export function RecordsTable({
                             Download receipt
                           </DropdownMenuItem>
                         </>
-                      )}
+                      ) : null}
                       <DropdownMenuItem disabled>
                         <FileText className="h-3.5 w-3.5 mr-2" />
                         Generate agreement
@@ -730,6 +871,12 @@ export function RecordsTable({
         customColumns={customColumns}
         loading={formLoading}
         mode={editRecord ? "edit" : "create"}
+      />
+
+      <PaymentHistoryDialog
+        record={historyRecord}
+        open={!!historyRecord}
+        onClose={() => setHistoryRecord(null)}
       />
 
       <ConfirmDialog
