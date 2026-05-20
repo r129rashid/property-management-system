@@ -19,7 +19,7 @@ export default async function AdminPage() {
       <div>
         <h2 className="text-xl font-bold tracking-tight">Admin Console</h2>
         <p className="text-sm text-muted-foreground">
-          Generate monthly rent entries, mark payments, carry forward or excuse unpaid rent.
+          Excuse rent payments for specific months. Mark paid/unpaid from the Rental Ledger.
         </p>
       </div>
       <AdminConsole records={records ?? []} userId={user.id} />

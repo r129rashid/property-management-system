@@ -98,18 +98,12 @@ const STATUS_CONFIG = {
     label: "Excused",
     cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   },
-  carried: {
-    label: "Carried Fwd",
-    cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
 } as const
 
 type EffectiveStatus = keyof typeof STATUS_CONFIG
 
 function getEffectiveStatus(rec: RecordRow, payment?: RentPaymentRow): EffectiveStatus {
   if (payment?.excused) return "excused"
-  if (payment?.notes === "carried") return "carried"
-  if (payment?.paid) return "paid"
   return getRecordStatus(rec.due_day, rec.amount_paid)
 }
 
@@ -391,7 +385,7 @@ export function RecordsTable({
         cell: ({ row }) => {
           const rec = row.original
           const status = getEffectiveStatus(rec, currentMonthPayments[rec.id])
-          const isActionable = status !== "paid" && status !== "excused" && status !== "carried"
+          const isActionable = status !== "paid" && status !== "excused"
           return (
             <div className="flex items-center gap-1">
               {isActionable ? (
@@ -580,14 +574,6 @@ export function RecordsTable({
       .update({ amount_paid: true })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
-    // Sync to rent_payments if an entry exists for current month
-    const payment = currentMonthPayments[id]
-    if (payment && !payment.paid) {
-      const today = new Date().toISOString().split("T")[0]
-      await supabase.from("rent_payments")
-        .update({ paid: true, paid_on: today })
-        .eq("id", payment.id)
-    }
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: true } : r)))
     toast.success("Marked as paid")
     logActivity(`Marked ${rec?.tenant_name} as paid`)
@@ -600,13 +586,6 @@ export function RecordsTable({
       .update({ amount_paid: false })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
-    // Sync to rent_payments if an entry exists for current month
-    const payment = currentMonthPayments[id]
-    if (payment?.paid) {
-      await supabase.from("rent_payments")
-        .update({ paid: false, paid_on: null })
-        .eq("id", payment.id)
-    }
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: false } : r)))
     toast.success("Marked as unpaid")
     logActivity(`Marked ${rec?.tenant_name} as unpaid`)
@@ -731,7 +710,7 @@ export function RecordsTable({
           filteredRecords.map((rec) => {
             const status = getEffectiveStatus(rec, currentMonthPayments[rec.id])
             const cfg = STATUS_CONFIG[status]
-            const isActionable = status !== "paid" && status !== "excused" && status !== "carried"
+            const isActionable = status !== "paid" && status !== "excused"
             return (
               <motion.div
                 key={rec.id}

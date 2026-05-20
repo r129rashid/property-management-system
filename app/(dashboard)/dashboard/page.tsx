@@ -44,12 +44,10 @@ async function DashboardContent() {
     return Math.round((daysActive / daysInMonth) * rec.rent_amount)
   }
 
-  type EffStatus = "paid" | "due-soon" | "overdue" | "excused" | "carried"
+  type EffStatus = "paid" | "due-soon" | "overdue" | "excused"
   function effectiveStatus(rec: RecordRow): EffStatus {
     const p = paymentMap[rec.id]
     if (p?.excused) return "excused"
-    if (p?.notes === "carried") return "carried"
-    if (p?.paid) return "paid"
     return getRecordStatus(rec.due_day, rec.amount_paid)
   }
 
@@ -61,27 +59,18 @@ async function DashboardContent() {
   const dueSoonCount = rows.filter((r) => effectiveStatus(r) === "due-soon").length
 
   const upcoming = rows
-    .filter((r) => {
-      const s = effectiveStatus(r)
-      return s !== "paid" && s !== "excused" && s !== "carried"
-    })
+    .filter((r) => effectiveStatus(r) !== "paid" && effectiveStatus(r) !== "excused")
     .slice(0, 5)
 
-  // Financial KPIs — use ledger when entries exist
+  // Financial KPIs — excused entries excluded; paid = records.amount_paid
   let totalReceivable = 0
   let totalCollected = 0
   for (const rec of rows) {
     const payment = paymentMap[rec.id]
-    if (payment) {
-      if (payment.excused) continue
-      if (payment.notes === "carried") continue
-      totalReceivable += payment.amount_due
-      if (payment.paid) totalCollected += payment.amount_due
-    } else {
-      const amount = getProratedAmount(rec)
-      totalReceivable += amount
-      if (rec.amount_paid) totalCollected += amount
-    }
+    if (payment?.excused) continue // waived this month
+    const amount = getProratedAmount(rec)
+    totalReceivable += amount
+    if (rec.amount_paid) totalCollected += amount
   }
   const totalOutstanding = totalReceivable - totalCollected
 
