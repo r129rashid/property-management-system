@@ -66,12 +66,25 @@ App is live on Vercel (`property-management-system-coral.vercel.app`).
 | RecordForm: date picker replaced with day-of-month number input (1–28) | `components/forms/RecordForm.tsx` |
 | RecordsTable, UpcomingDues, Record detail, PDF receipt all updated to `due_day` | Multiple |
 | **`lease_start`** date on every record — required in form, shown in detail page | `components/forms/RecordForm.tsx`, `app/(dashboard)/records/[id]/page.tsx` |
-| **`rent_payments` table** — per-tenant per-month ledger (paid/excused/carried_from) | `types/database.ts`, `supabase-migration-v2.sql` |
-| **Admin Console** at `/admin` — month picker, Generate month, Mark paid, Excuse, Carry forward | `app/(dashboard)/admin/page.tsx`, `components/admin/AdminConsole.tsx` |
+| **`rent_payments` table** — per-tenant per-month ledger (paid/excused) | `types/database.ts`, `supabase-migration-v2.sql` |
+| **Admin Console** at `/admin` — month picker, Generate month, Mark paid, Excuse, Carry forward (initial) | `app/(dashboard)/admin/page.tsx`, `components/admin/AdminConsole.tsx` |
 | Proration: first month rent = `round((days_active / days_in_month) × rent_amount)` | `components/admin/AdminConsole.tsx` |
 | Tenants whose `lease_start` is after the selected month are skipped in Generate | `components/admin/AdminConsole.tsx` |
-| Dashboard 6-month chart now sources from `rent_payments` table | `app/(dashboard)/dashboard/page.tsx` |
 | Sidebar: Admin nav item added | `components/layout/Sidebar.tsx` |
+
+### Session 10: V2 Refinements — Status Unification + Admin Redesign
+| What | Files |
+|------|-------|
+| **Dashboard proration**: same `getProratedAmount()` logic as admin now applied to financial KPIs | `app/(dashboard)/dashboard/page.tsx` |
+| **Dialog width fix**: removed `sm:max-w-sm` from `DialogContent` base class (was overriding consumer widths at ≥640px) | `components/ui/dialog.tsx`, `components/table/AddColumnDialog.tsx` |
+| **RecordForm width**: widened to `max-w-3xl` (works correctly after dialog fix) | `components/forms/RecordForm.tsx` |
+| **Dashboard chart removed**: 6-month area chart was broken (no data). Removed entirely. | `app/(dashboard)/dashboard/page.tsx` |
+| **Status unification**: single source of truth — `records.amount_paid` owns paid/unpaid; `rent_payments.excused` owns excused per month | All three views |
+| **Admin redesign**: removed Generate Month, Carry Forward, Mark Paid. Admin can ONLY excuse/un-excuse per month | `components/admin/AdminConsole.tsx` |
+| **Payment History dialog**: three-dot menu in Records table now has "Payment History" — fetches all `rent_payments` for that tenant on open | `components/table/RecordsTable.tsx` |
+| **`getEffectiveStatus()`**: unified function: excused (from paymentMap) → paid (from records.amount_paid) → overdue/due-soon | `components/table/RecordsTable.tsx` |
+| **Dashboard `paymentMap`**: parallel-fetches current month's `rent_payments`, uses excused flag for status + financial KPIs | `app/(dashboard)/dashboard/page.tsx` |
+| **Records page passes paymentMap**: server component fetches current month payments, passes to RecordsTable | `app/(dashboard)/records/page.tsx` |
 
 ---
 
@@ -87,6 +100,9 @@ App is live on Vercel (`property-management-system-coral.vercel.app`).
 - **Proration**: only applied in the matching YYYY-MM of `lease_start`. Full rent all other months
 - **Privacy context**: `PrivacyProvider` wraps dashboard; `usePrivacy()` reads `hidden` state in any client component
 - **Activity log**: `localStorage` key `pms_activity_log`, max 20 entries, format `{ message, timestamp: ISO string }`
+- **Payment status architecture**: `records.amount_paid` (boolean) = sole source for paid/unpaid. `rent_payments.excused` (boolean) per month = sole source for excused. Status hierarchy everywhere: excused → paid → overdue/due-soon
+- **Admin console scope**: Admin can ONLY excuse or un-excuse. Mark paid/unpaid is done from the Records table (Rental Ledger). No "Generate Month" or carry-forward.
+- **Dialog widths**: `components/ui/dialog.tsx` base class has NO `sm:max-w-*`. Consumer passes its own width (e.g. RecordForm uses `max-w-3xl`, AddColumnDialog uses `sm:max-w-sm`)
 
 ## Known Open Issue
 `proxy.ts` at project root is NOT recognised by Next.js as middleware:
@@ -95,8 +111,8 @@ App is live on Vercel (`property-management-system-coral.vercel.app`).
 - **Fix:** rename → `middleware.ts`, `export default async function middleware`
 
 ## What the Next Session Could Do
-- **Dashboard month picker** (Phase 4 of V2): prev/next navigation, financial KPIs and chart pull from `rent_payments` for selected month
-- **Tenant payment history** on record detail page — list of all `rent_payments` rows for that tenant
+- **Dashboard month picker** (Phase 4 of V2): prev/next navigation, financial KPIs pull from `rent_payments` for selected month
 - Implement "Generate Agreement" PDF (jsPDF already installed)
-- Fix middleware naming issue for proper route-level auth protection
+- Fix middleware naming issue for proper route-level auth protection (`proxy.ts` → `middleware.ts`)
 - Animated dark treatment on the signup page
+- Signup page currently has no animation/glass treatment (only login does)

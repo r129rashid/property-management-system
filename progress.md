@@ -92,8 +92,19 @@ Full payment history per tenant. Carry-forward and excuse actions in an admin co
 **Phase 3 — Admin Console + Payment Log**
 - [x] `supabase-migration-v2.sql` — rent_payments table + RLS
 - [x] `app/(dashboard)/admin/page.tsx` — admin console page
-- [x] `components/admin/AdminConsole.tsx` — generate month / mark paid / carry forward / excuse
-- [x] Payment history on record detail page
+- [x] `components/admin/AdminConsole.tsx` — month picker, excuse/un-excuse per tenant per month
+- [x] Payment History dialog in Records table three-dot menu (fetches all rent_payments on open)
+
+**Phase 3b — Status Unification + Admin Redesign**
+- [x] Single source of truth: `records.amount_paid` = paid/unpaid; `rent_payments.excused` = excused
+- [x] Admin redesigned: excuse-only (removed Generate Month, Carry Forward, Mark Paid)
+- [x] `getEffectiveStatus()` in RecordsTable: excused → paid → overdue/due-soon
+- [x] Dashboard parallel-fetches rent_payments; excused entries excluded from KPIs + status counts
+- [x] Records page server component passes current month paymentMap to RecordsTable
+- [x] Dashboard 6-month chart removed (broken, no data source)
+- [x] Dashboard proration: `getProratedAmount()` applied to all financial KPIs
+- [x] Dialog width: removed `sm:max-w-sm` from dialog.tsx base — consumers control their own width
+- [x] RecordForm widened to `max-w-3xl`
 
 **Phase 4 — Dashboard Month Picker** ← next session
 - [ ] Month picker (prev/next) in dashboard header
@@ -105,5 +116,6 @@ Full payment history per tenant. Carry-forward and excuse actions in an admin co
 - `getRecordStatus(dueDay, amountPaid)` — computes against current month's Nth day.
 - `rent_payments.month` is always `YYYY-MM`. UNIQUE(record_id, month) enforced at DB.
 - Excused payments excluded from Outstanding and not counted as Overdue.
-- Carry-forward: new payment row, `amount_due = base_rent + prev_unpaid`, `carried_from = prev_id`.
+- **No carry-forward** — removed in Phase 3b. Admin can only excuse/un-excuse.
+- **Status hierarchy**: excused (rent_payments.excused) → paid (records.amount_paid) → overdue/due-soon
 - Admin console at `/admin`. Sidebar link included.
