@@ -60,25 +60,25 @@ async function DashboardContent() {
         <KpiCard
           title="Total Properties"
           value={totalProperties}
-          icon={Building2}
+          icon={<Building2 className="h-5 w-5" />}
           color="indigo"
         />
         <KpiCard
           title="Total Tenants"
           value={totalTenants}
-          icon={Users}
+          icon={<Users className="h-5 w-5" />}
           color="violet"
         />
         <KpiCard
           title="Monthly Rent"
           value={`₹${totalRent.toLocaleString("en-IN")}`}
-          icon={IndianRupee}
+          icon={<IndianRupee className="h-5 w-5" />}
           color="emerald"
         />
         <KpiCard
           title="Overdue"
           value={overdueCount}
-          icon={AlertTriangle}
+          icon={<AlertTriangle className="h-5 w-5" />}
           color="red"
         />
       </div>

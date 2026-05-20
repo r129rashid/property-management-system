@@ -1,9 +1,9 @@
 "use client"
 
+import type React from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import type { LucideIcon } from "lucide-react"
 
 const COLOR_MAP = {
   indigo: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
@@ -15,11 +15,11 @@ const COLOR_MAP = {
 interface KpiCardProps {
   title: string
   value: string | number
-  icon: LucideIcon
+  icon: React.ReactNode
   color: keyof typeof COLOR_MAP
 }
 
-export function KpiCard({ title, value, icon: Icon, color }: KpiCardProps) {
+export function KpiCard({ title, value, icon, color }: KpiCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -33,7 +33,7 @@ export function KpiCard({ title, value, icon: Icon, color }: KpiCardProps) {
             <p className="text-2xl font-bold tracking-tight">{value}</p>
           </div>
           <div className={cn("p-2.5 rounded-lg shrink-0", COLOR_MAP[color])}>
-            <Icon className="h-5 w-5" />
+            {icon}
           </div>
         </CardContent>
       </Card>
