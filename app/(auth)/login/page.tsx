@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -12,7 +12,10 @@ import { Building2, Loader2, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { createClient } from "@/lib/supabase/client"
+
+const REMEMBER_KEY = "pms_remembered_email"
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -25,17 +28,33 @@ export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const supabase = createClient()
 
   const {
     register,
     handleSubmit,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
+  // Load saved email on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY)
+    if (saved) {
+      setValue("email", saved)
+      setRememberMe(true)
+    }
+  }, [setValue])
+
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_KEY, data.email)
+    } else {
+      localStorage.removeItem(REMEMBER_KEY)
+    }
     const { error } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
@@ -194,8 +213,24 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="px-8 pt-8 pb-10 flex flex-col gap-4"
+            className="px-8 pt-6 pb-10 flex flex-col gap-4"
           >
+            {/* Remember me */}
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(v) => setRememberMe(!!v)}
+                className="border-white/20 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+              />
+              <Label
+                htmlFor="remember"
+                className="text-sm text-slate-400 cursor-pointer select-none"
+              >
+                Remember my email
+              </Label>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}

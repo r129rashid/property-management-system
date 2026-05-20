@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "PropManage — Property Management",
+  title: "Abhay's PMS — Property Management",
   description: "Manage your rental properties and tenants",
 }
 
