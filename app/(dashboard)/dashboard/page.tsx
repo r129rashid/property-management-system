@@ -28,10 +28,24 @@ async function DashboardContent() {
   const totalProperties = rows.length
   const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
 
-  const totalReceivable = rows.reduce((s, r) => s + r.rent_amount, 0)
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+
+  function getProratedAmount(rec: RecordRow): number {
+    if (!rec.lease_start) return rec.rent_amount
+    const leaseStartMonth = rec.lease_start.substring(0, 7)
+    if (currentMonthStr !== leaseStartMonth) return rec.rent_amount
+    const [y, m] = currentMonthStr.split("-").map(Number)
+    const daysInMonth = new Date(y, m, 0).getDate()
+    const startDay = parseInt(rec.lease_start.substring(8, 10))
+    const daysActive = daysInMonth - startDay + 1
+    if (daysActive >= daysInMonth) return rec.rent_amount
+    return Math.round((daysActive / daysInMonth) * rec.rent_amount)
+  }
+
+  const totalReceivable = rows.reduce((s, r) => s + getProratedAmount(r), 0)
   const totalCollected = rows
     .filter((r) => r.amount_paid)
-    .reduce((s, r) => s + r.rent_amount, 0)
+    .reduce((s, r) => s + getProratedAmount(r), 0)
   const totalOutstanding = totalReceivable - totalCollected
 
   const overdueCount = rows.filter(
