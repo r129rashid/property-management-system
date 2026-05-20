@@ -62,42 +62,72 @@ export default function LoginPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 28 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0, y: 32, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="w-full max-w-md"
     >
-      {/* Card */}
-      <div className="bg-card rounded-2xl shadow-2xl ring-1 ring-border/60 overflow-hidden">
-
-        {/* Top accent bar */}
-        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-600" />
+      {/* Glass card */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: "rgba(15, 18, 35, 0.75)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Indigo-to-violet accent bar */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500" />
 
         {/* Header */}
-        <div className="px-8 pt-10 pb-8">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 ring-1 ring-indigo-500/20">
-              <Building2 className="h-5 w-5 text-indigo-500" />
+        <div className="px-8 pt-10 pb-7">
+          {/* Brand */}
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="flex items-center gap-3 mb-9"
+          >
+            <div
+              className="p-2.5 rounded-xl"
+              style={{
+                background: "rgba(99,102,241,0.15)",
+                boxShadow: "0 0 0 1px rgba(99,102,241,0.25), 0 0 12px rgba(99,102,241,0.15)",
+              }}
+            >
+              <Building2 className="h-5 w-5 text-indigo-400" />
             </div>
-            <span className="text-sm font-semibold tracking-wide text-muted-foreground">
-              PropManage
+            <span className="text-sm font-semibold tracking-widest text-slate-400 uppercase">
+              Abhay&apos;s PMS
             </span>
-          </div>
+          </motion.div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to your account to continue
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              Welcome back
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Sign in to manage your rental portfolio
+            </p>
+          </motion.div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="px-8 space-y-5">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.28, duration: 0.4 }}
+            className="px-8 space-y-5"
+          >
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-medium text-slate-300">
                 Email address
               </Label>
               <Input
@@ -105,12 +135,12 @@ export default function LoginPage() {
                 type="email"
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="h-11"
+                className="h-11 bg-white/[0.05] border-white/[0.10] text-white placeholder:text-slate-500 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50"
                 aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
               {errors.email && (
-                <p id="email-error" className="text-xs text-destructive">
+                <p id="email-error" className="text-xs text-red-400">
                   {errors.email.message}
                 </p>
               )}
@@ -119,13 +149,13 @@ export default function LoginPage() {
             {/* Password */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium">
+                <Label htmlFor="password" className="text-sm font-medium text-slate-300">
                   Password
                 </Label>
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-indigo-500 hover:text-indigo-600 hover:underline underline-offset-4 transition-colors"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline underline-offset-4 transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -136,14 +166,14 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="h-11 pr-10"
+                  className="h-11 pr-10 bg-white/[0.05] border-white/[0.10] text-white placeholder:text-slate-500 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50"
                   aria-describedby={errors.password ? "password-error" : undefined}
                   {...register("password")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword
@@ -152,36 +182,53 @@ export default function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p id="password-error" className="text-xs text-destructive">
+                <p id="password-error" className="text-xs text-red-400">
                   {errors.password.message}
                 </p>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Footer */}
-          <div className="px-8 pt-8 pb-10 flex flex-col gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            className="px-8 pt-8 pb-10 flex flex-col gap-4"
+          >
             <Button
               type="submit"
-              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm shadow-indigo-500/20 transition-all"
               disabled={loading}
+              className="w-full h-11 font-semibold text-white transition-all"
+              style={{
+                background: loading
+                  ? "rgba(99,102,241,0.5)"
+                  : "linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)",
+                boxShadow: loading ? "none" : "0 4px 24px rgba(99,102,241,0.35)",
+              }}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Sign in
             </Button>
 
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-sm text-slate-500 text-center">
               Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
-                className="text-indigo-500 hover:text-indigo-600 font-medium hover:underline underline-offset-4 transition-colors"
+                className="text-indigo-400 hover:text-indigo-300 font-medium hover:underline underline-offset-4 transition-colors"
               >
                 Create one
               </Link>
             </p>
-          </div>
+          </motion.div>
         </form>
       </div>
+
+      {/* Subtle glow under the card */}
+      <div
+        className="absolute -z-10 w-64 h-16 left-1/2 -translate-x-1/2 bottom-0 translate-y-4 blur-2xl pointer-events-none"
+        style={{ background: "rgba(99,102,241,0.20)" }}
+      />
     </motion.div>
   )
 }
