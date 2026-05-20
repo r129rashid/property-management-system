@@ -6,8 +6,8 @@ import { RentChart } from "@/components/dashboard/RentChart"
 import { StatusDonut } from "@/components/dashboard/StatusDonut"
 import { UpcomingDues } from "@/components/dashboard/UpcomingDues"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getRecordStatus } from "@/lib/utils"
-import { Building2, Users, IndianRupee, AlertTriangle } from "lucide-react"
+import { getRecordStatus, formatCurrency } from "@/lib/utils"
+import { Building2, Users, IndianRupee, AlertTriangle, Wallet, TrendingDown } from "lucide-react"
 import type { RecordRow } from "@/types/database"
 
 async function DashboardContent() {
@@ -23,6 +23,11 @@ async function DashboardContent() {
   const totalProperties = rows.length
   const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
   const totalRent = rows.reduce((s, r) => s + r.rent_amount, 0)
+  const totalCollected = rows
+    .filter((r) => r.amount_paid)
+    .reduce((s, r) => s + r.rent_amount, 0)
+  const totalOutstanding = totalRent - totalCollected
+
   const overdueCount = rows.filter(
     (r) => getRecordStatus(r.due_date, r.amount_paid) === "overdue"
   ).length
@@ -55,8 +60,8 @@ async function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* KPI cards — row 1: portfolio counts */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <KpiCard
           title="Total Properties"
           value={totalProperties}
@@ -70,17 +75,33 @@ async function DashboardContent() {
           color="violet"
         />
         <KpiCard
-          title="Monthly Rent"
-          value={`₹${totalRent.toLocaleString("en-IN")}`}
-          icon={<IndianRupee className="h-5 w-5" />}
-          color="emerald"
-        />
-        <KpiCard
           title="Overdue"
           value={overdueCount}
           icon={<AlertTriangle className="h-5 w-5" />}
           color="red"
           href="/records?status=overdue"
+        />
+      </div>
+
+      {/* KPI cards — row 2: financials */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <KpiCard
+          title="Total Receivable"
+          value={formatCurrency(totalRent)}
+          icon={<IndianRupee className="h-5 w-5" />}
+          color="indigo"
+        />
+        <KpiCard
+          title="Total Collected"
+          value={formatCurrency(totalCollected)}
+          icon={<Wallet className="h-5 w-5" />}
+          color="emerald"
+        />
+        <KpiCard
+          title="Outstanding"
+          value={formatCurrency(totalOutstanding)}
+          icon={<TrendingDown className="h-5 w-5" />}
+          color="amber"
         />
       </div>
 
@@ -105,8 +126,13 @@ async function DashboardContent() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-28 rounded-xl" />
         ))}
       </div>

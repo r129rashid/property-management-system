@@ -11,6 +11,7 @@ const COLOR_MAP = {
   violet: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
   emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
   red: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+  amber: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
 } as const
 
 interface KpiCardProps {
