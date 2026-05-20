@@ -22,6 +22,9 @@ A full-stack rental property management web app built with Next.js 16, Supabase,
 - `custom_fields` JSONB: cast to `Json` type when inserting/updating via Supabase client
 - Next.js 16: `params` is `Promise<{ id: string }>` — must `await params`
 - Activity log: stored in `localStorage` under key `pms_activity_log`, max 20 entries
+- `KpiCard` accepts optional `href?: string` — wraps in `<Link>` when provided (used for click-through to filtered records)
+- `RecordsTable` reads `?status` URL search param via `useSearchParams()` to initialise `statusFilter` — navigate to `/records?status=overdue` to pre-filter
+- Auth layout has gradient + dot-grid background; login card uses custom div (not shadcn Card) with indigo accent bar at top
 
 ## Project Structure
 

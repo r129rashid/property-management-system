@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,6 +24,9 @@ import {
   Columns,
   ChevronLeft,
   ChevronRight,
+  MoreVertical,
+  FileText,
+  CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +47,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { RecordForm } from "@/components/forms/RecordForm"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -101,6 +112,7 @@ export function RecordsTable({
   userId,
 }: RecordsTableProps) {
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   // Data state
   const [records, setRecords] = useState<RecordRow[]>(initialRecords)
@@ -109,7 +121,11 @@ export function RecordsTable({
   // Table state
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid" | "overdue">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid" | "overdue">(() => {
+    const s = searchParams.get("status")
+    if (s === "overdue" || s === "paid" || s === "unpaid") return s
+    return "all"
+  })
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
 
   // UI state
@@ -247,37 +263,57 @@ export function RecordsTable({
           const rec = row.original
           const status = getRecordStatus(rec.due_date, rec.amount_paid)
           return (
-            <div className="flex items-center gap-0.5">
-              {status === "paid" && (
+            <div className="flex items-center gap-1">
+              {/* Quick action: mark as paid — only shown when not yet paid */}
+              {status !== "paid" && (
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Download receipt"
-                  onClick={() => generatePDF(rec)}
+                  size="sm"
+                  className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1"
+                  onClick={() => handleMarkPaid(rec.id)}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-3 w-3" />
+                  Paid
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => {
-                  setEditRecord(rec)
-                  setShowForm(true)
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => setDeleteId(rec.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {/* Three-dot menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-3.5 w-3.5" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditRecord(rec)
+                      setShowForm(true)
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  {status === "paid" && (
+                    <DropdownMenuItem onClick={() => generatePDF(rec)}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Download receipt
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem disabled>
+                    <FileText className="h-3.5 w-3.5 mr-2" />
+                    Generate agreement
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setDeleteId(rec.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )
         },
@@ -384,6 +420,18 @@ export function RecordsTable({
     setRowSelection({})
     toast.success(`${selectedIds.length} record(s) marked as paid`)
     logActivity(`Bulk marked ${selectedIds.length} records as paid`)
+  }
+
+  const handleMarkPaid = async (id: string) => {
+    const rec = records.find((r) => r.id === id)
+    const { error } = await supabase
+      .from("records")
+      .update({ amount_paid: true })
+      .eq("id", id)
+    if (error) { toast.error(error.message); return }
+    setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: true } : r)))
+    toast.success("Marked as paid")
+    logActivity(`Marked ${rec?.tenant_name} as paid`)
   }
 
   const selectedCount = Object.keys(rowSelection).length

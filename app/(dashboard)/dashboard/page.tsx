@@ -80,6 +80,7 @@ async function DashboardContent() {
           value={overdueCount}
           icon={<AlertTriangle className="h-5 w-5" />}
           color="red"
+          href="/records?status=overdue"
         />
       </div>
 

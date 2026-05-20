@@ -29,7 +29,7 @@ export default function RecordsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Records</h2>
+        <h2 className="text-xl font-bold tracking-tight">Rental Ledger</h2>
         <p className="text-sm text-muted-foreground">
           Manage your rental properties and tenants
         </p>

@@ -8,18 +8,10 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Building2, Loader2 } from "lucide-react"
+import { Building2, Loader2, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 
 const loginSchema = z.object({
@@ -32,6 +24,7 @@ type LoginForm = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const supabase = createClient()
 
   const {
@@ -69,32 +62,50 @@ export default function LoginPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 28 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="w-full max-w-md"
     >
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 rounded-xl bg-indigo-500/10">
+      {/* Card */}
+      <div className="bg-card rounded-2xl shadow-2xl ring-1 ring-border/60 overflow-hidden">
+
+        {/* Top accent bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-600" />
+
+        {/* Header */}
+        <div className="px-8 pt-10 pb-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 ring-1 ring-indigo-500/20">
               <Building2 className="h-5 w-5 text-indigo-500" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">PropManage</span>
+            <span className="text-sm font-semibold tracking-wide text-muted-foreground">
+              PropManage
+            </span>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>Sign in to manage your properties</CardDescription>
-        </CardHeader>
 
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to your account to continue
+          </p>
+        </div>
+
+        {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+          <div className="px-8 space-y-5">
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email address
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
                 autoComplete="email"
+                className="h-11"
                 aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
@@ -105,51 +116,72 @@ export default function LoginPage() {
               )}
             </div>
 
-            <div className="space-y-1.5">
+            {/* Password */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-indigo-500 hover:underline"
+                  className="text-xs text-indigo-500 hover:text-indigo-600 hover:underline underline-offset-4 transition-colors"
                 >
                   Forgot password?
                 </button>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                aria-describedby={errors.password ? "password-error" : undefined}
-                {...register("password")}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className="h-11 pr-10"
+                  aria-describedby={errors.password ? "password-error" : undefined}
+                  {...register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword
+                    ? <EyeOff className="h-4 w-4" />
+                    : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && (
                 <p id="password-error" className="text-xs text-destructive">
                   {errors.password.message}
                 </p>
               )}
             </div>
-          </CardContent>
+          </div>
 
-          <CardFooter className="flex flex-col gap-3 pt-2">
+          {/* Footer */}
+          <div className="px-8 pt-8 pb-10 flex flex-col gap-4">
             <Button
               type="submit"
-              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
+              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm shadow-indigo-500/20 transition-all"
               disabled={loading}
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Sign in
             </Button>
+
             <p className="text-sm text-muted-foreground text-center">
               Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-indigo-500 hover:underline font-medium">
-                Sign up
+              <Link
+                href="/signup"
+                className="text-indigo-500 hover:text-indigo-600 font-medium hover:underline underline-offset-4 transition-colors"
+              >
+                Create one
               </Link>
             </p>
-          </CardFooter>
+          </div>
         </form>
-      </Card>
+      </div>
     </motion.div>
   )
 }
