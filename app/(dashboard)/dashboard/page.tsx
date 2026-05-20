@@ -23,15 +23,13 @@ async function DashboardContent() {
   const rows: RecordRow[] = records ?? []
 
   const now = new Date()
-  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" })
 
   const totalProperties = rows.length
   const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
 
-  const monthRows = rows.filter((r) => r.due_date?.startsWith(currentMonthStr))
-  const totalReceivable = monthRows.reduce((s, r) => s + r.rent_amount, 0)
-  const totalCollected = monthRows
+  const totalReceivable = rows.reduce((s, r) => s + r.rent_amount, 0)
+  const totalCollected = rows
     .filter((r) => r.amount_paid)
     .reduce((s, r) => s + r.rent_amount, 0)
   const totalOutstanding = totalReceivable - totalCollected
