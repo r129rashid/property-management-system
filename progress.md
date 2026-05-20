@@ -19,11 +19,14 @@
 - [x] Task 8: Final TypeScript clean + production build verified + mobile drawer added
 
 - [x] Task 9: UI polish — records three-dot menu, quick Mark as Paid, dashboard click-through, login redesign
+- [x] Task 10: Animated dark login — Mac screensaver orbs, glass card, Abhay's PMS brand
+- [x] Task 11: Dark mode default app-wide, Remember Me (email only), title update
 
 ## Bug fixes applied (post-launch)
 - Dashboard crash: RSC serialization of Lucide forwardRef icons — KpiCard.icon changed to ReactNode
 - Dashboard redirect inside Suspense → moved auth check outside Suspense + force-dynamic
 - Activity log "Invalid Date": schema mismatch in logActivity writer vs reader — fixed
+- App defaulting to light theme post-login — fixed by changing ThemeProvider defaultTheme to "dark"
 
 ## Notes
 - Directory name has spaces → project created in propmanage/ then moved to root
@@ -32,4 +35,8 @@
 - Geist fonts via next/font/google (already in Next.js 16 template)
 - KpiCard accepts optional `href` prop — wraps in Link for click-through to filtered views
 - RecordsTable reads `?status` URL search param on mount to init the status filter
+- ThemeProvider: defaultTheme="dark", enableSystem removed — whole app is dark by default
+- Auth layout: "use client" with 5 Framer Motion animated gradient orbs (indigo/violet/cyan/blue/pink)
+- Login Remember Me: saves email to localStorage key `pms_remembered_email`; never saves password
+- Brand name throughout: "Abhay's PMS"
 - `proxy.ts` is NOT picked up by Next.js as middleware — must rename to `middleware.ts` and use `export default async function middleware` (known open issue)

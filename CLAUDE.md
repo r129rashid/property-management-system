@@ -15,7 +15,7 @@ A full-stack rental property management web app built with Next.js 16, Supabase,
 
 ## Key Conventions
 
-- Dark mode: `@custom-variant dark (&:is(.dark *))` in `globals.css` + `next-themes` with `attribute="class"`
+- Dark mode: `@custom-variant dark (&:is(.dark *))` in `globals.css` + `next-themes` with `attribute="class"` and **`defaultTheme="dark"`** (no `enableSystem`) — whole app is dark by default
 - Tailwind v4: all theme config lives in `globals.css` `@theme` block — no `tailwind.config.ts`
 - Supabase types: use `export type Database` (not `interface`) with `Relationships: []` per table and `{ [_ in never]: never }` for Views/Functions/Enums/CompositeTypes
 - Zod + RHF: use `z.number()` (not `z.coerce.number()`) + `{ valueAsNumber: true }` in `register()` for number fields
@@ -24,7 +24,10 @@ A full-stack rental property management web app built with Next.js 16, Supabase,
 - Activity log: stored in `localStorage` under key `pms_activity_log`, max 20 entries
 - `KpiCard` accepts optional `href?: string` — wraps in `<Link>` when provided (used for click-through to filtered records)
 - `RecordsTable` reads `?status` URL search param via `useSearchParams()` to initialise `statusFilter` — navigate to `/records?status=overdue` to pre-filter
-- Auth layout has gradient + dot-grid background; login card uses custom div (not shadcn Card) with indigo accent bar at top
+- Auth layout: `"use client"` with 5 Framer Motion animated gradient orbs + dot-grid + vignette; forces `class="dark"` so login is always dark
+- Login card: glass morphism (`rgba(15,18,35,0.75)` + `backdrop-blur(24px)`), not shadcn Card; staggered entrance animations
+- Remember Me: saves email to `localStorage` key `pms_remembered_email`; loaded via `useEffect` + `setValue` on mount; never saves password
+- Brand name: "Abhay's PMS" (not PropManage)
 
 ## Project Structure
 
