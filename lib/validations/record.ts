@@ -10,6 +10,7 @@ export const recordSchema = z.object({
     .string()
     .regex(/^[0-9]{12}$/, "Must be exactly 12 digits"),
   property_location: z.string().min(1, "Required"),
+  lease_start: z.string().min(1, "Required"),
   rent_amount: z.number().min(1, "Must be greater than 0"),
   due_day: z.number().int().min(1, "Min 1").max(28, "Max 28"),
   amount_paid: z.boolean(),

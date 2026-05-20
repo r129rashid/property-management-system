@@ -63,6 +63,7 @@ export function RecordForm({
         aadhar_number: defaultValues?.aadhar_number ?? "",
         property_location: defaultValues?.property_location ?? "",
         rent_amount: defaultValues?.rent_amount ?? (undefined as unknown as number),
+        lease_start: defaultValues?.lease_start ?? "",
         due_day: defaultValues?.due_day ?? (undefined as unknown as number),
         amount_paid: defaultValues?.amount_paid ?? false,
       })
@@ -172,6 +173,14 @@ export function RecordForm({
             />
             {errors.property_location && (
               <p className="text-xs text-destructive">{errors.property_location.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="lease_start">Lease Start Date</Label>
+            <Input id="lease_start" type="date" {...register("lease_start")} />
+            {errors.lease_start && (
+              <p className="text-xs text-destructive">{errors.lease_start.message}</p>
             )}
           </div>
 

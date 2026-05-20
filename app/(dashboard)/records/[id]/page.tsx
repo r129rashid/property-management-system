@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DocumentUpload } from "@/components/shared/DocumentUpload"
-import { cn, formatCurrency, maskAadhar, getRecordStatus, formatDueDay } from "@/lib/utils"
+import { cn, formatCurrency, maskAadhar, getRecordStatus, formatDueDay, formatDate } from "@/lib/utils"
 
 const STATUS_CONFIG = {
   paid: {
@@ -50,6 +50,7 @@ export default async function RecordDetailPage({
     ["Tenant", record.tenant_name],
     ["Contact", record.contact_number],
     ["Aadhar", maskAadhar(record.aadhar_number)],
+    ["Lease Start", record.lease_start ? formatDate(record.lease_start) : "—"],
     ["Rent Amount", formatCurrency(record.rent_amount)],
     ["Due Day", `${formatDueDay(record.due_day)} of every month`],
     ["Paid", record.amount_paid ? "Yes" : "No"],

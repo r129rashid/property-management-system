@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/client"
-import { cn, formatCurrency, formatDueDay } from "@/lib/utils"
+import { cn, formatCurrency, formatDate, formatDueDay } from "@/lib/utils"
 import type { RecordRow, RentPaymentRow } from "@/types/database"
 
 interface Props {
@@ -31,6 +31,31 @@ function getMonthStr(year: number, month: number) {
 
 function getMonthLabel(year: number, month: number) {
   return new Date(year, month, 1).toLocaleString("default", { month: "long", year: "numeric" })
+}
+
+// Returns prorated amount for the first month, full rent otherwise.
+// daysInMonth: new Date(year, month_1indexed, 0).getDate()
+function computeAmountDue(rec: RecordRow, monthStr: string): {
+  amount: number
+  prorated: boolean
+  note: string
+} {
+  const fullRent = { amount: rec.rent_amount, prorated: false, note: "" }
+  if (!rec.lease_start) return fullRent
+
+  const leaseStartMonth = rec.lease_start.substring(0, 7) // YYYY-MM
+  if (monthStr !== leaseStartMonth) return fullRent
+
+  // First month of lease — prorate from start day to end of month
+  const [y, m] = monthStr.split("-").map(Number)
+  const daysInMonth = new Date(y, m, 0).getDate() // day 0 of next month = last day of this month
+  const startDay = parseInt(rec.lease_start.substring(8, 10))
+  const daysActive = daysInMonth - startDay + 1
+
+  if (daysActive >= daysInMonth) return fullRent // started on 1st — no proration
+
+  const amount = Math.round((daysActive / daysInMonth) * rec.rent_amount)
+  return { amount, prorated: true, note: `${daysActive}/${daysInMonth} days` }
 }
 
 export function AdminConsole({ records, userId }: Props) {
@@ -69,20 +94,23 @@ export function AdminConsole({ records, userId }: Props) {
     else setMonth(m => m + 1)
   }
 
-  // Generate entries for all tenants who don't have one yet this month
+  // Generate entries for tenants whose lease has started and have no entry yet this month
   const handleGenerateMonth = async () => {
-    const missing = records.filter((r) => !payments[r.id])
-    if (!missing.length) { toast.info("All tenants already have entries for this month"); return }
+    const eligible = records.filter((r) => {
+      if (payments[r.id]) return false // already has entry
+      // Skip if lease starts after this month
+      if (r.lease_start && r.lease_start.substring(0, 7) > monthStr) return false
+      return true
+    })
+    if (!eligible.length) { toast.info("All eligible tenants already have entries for this month"); return }
     setActionLoading("generate")
-    const rows = missing.map((r) => ({
-      record_id: r.id,
-      user_id: userId,
-      month: monthStr,
-      amount_due: r.rent_amount,
-    }))
+    const rows = eligible.map((r) => {
+      const { amount } = computeAmountDue(r, monthStr)
+      return { record_id: r.id, user_id: userId, month: monthStr, amount_due: amount }
+    })
     const { error } = await supabase.from("rent_payments").insert(rows)
     if (error) { toast.error(error.message); setActionLoading(null); return }
-    toast.success(`Generated ${missing.length} payment entr${missing.length === 1 ? "y" : "ies"} for ${monthLabel}`)
+    toast.success(`Generated ${eligible.length} entr${eligible.length === 1 ? "y" : "ies"} for ${monthLabel}`)
     setActionLoading(null)
     fetchPayments()
   }
@@ -222,6 +250,7 @@ export function AdminConsole({ records, userId }: Props) {
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="text-xs">Tenant</TableHead>
                   <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">Lease Start</TableHead>
                   <TableHead className="text-xs">Due Day</TableHead>
                   <TableHead className="text-xs">Amount</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
@@ -232,19 +261,25 @@ export function AdminConsole({ records, userId }: Props) {
                 {records.map((rec) => {
                   const p = payments[rec.id]
                   const isLoading = actionLoading === (p?.id ?? rec.id)
+                  const leaseNotStarted = rec.lease_start ? rec.lease_start.substring(0, 7) > monthStr : false
+                  const { prorated, note } = computeAmountDue(rec, monthStr)
                   return (
                     <TableRow key={rec.id} className="border-b border-border/30">
                       <TableCell className="text-sm font-medium py-3">{rec.tenant_name}</TableCell>
                       <TableCell className="text-sm py-3 text-muted-foreground">{rec.property_name}</TableCell>
+                      <TableCell className="text-sm py-3 text-muted-foreground">
+                        {rec.lease_start ? formatDate(rec.lease_start) : <span className="text-amber-500">Not set</span>}
+                      </TableCell>
                       <TableCell className="text-sm py-3 text-muted-foreground">{formatDueDay(rec.due_day)}</TableCell>
                       <TableCell className="text-sm py-3 font-semibold">
-                        {p ? formatCurrency(p.amount_due) : formatCurrency(rec.rent_amount)}
-                        {p?.carried_from && (
-                          <span className="ml-1 text-xs text-amber-500">(+carried)</span>
-                        )}
+                        {p ? formatCurrency(p.amount_due) : formatCurrency(prorated ? computeAmountDue(rec, monthStr).amount : rec.rent_amount)}
+                        {p?.carried_from && <span className="ml-1 text-xs text-amber-500">(+carried)</span>}
+                        {!p && prorated && <span className="ml-1 text-xs text-violet-500">({note})</span>}
                       </TableCell>
                       <TableCell className="py-3">
-                        {!p ? (
+                        {leaseNotStarted ? (
+                          <Badge className="bg-muted text-muted-foreground border-0 text-xs">Not started yet</Badge>
+                        ) : !p ? (
                           <Badge className="bg-muted text-muted-foreground border-0 text-xs">Not generated</Badge>
                         ) : p.excused ? (
                           <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-0 text-xs">Excused</Badge>
@@ -258,7 +293,7 @@ export function AdminConsole({ records, userId }: Props) {
                       </TableCell>
                       <TableCell className="py-3">
                         <div className="flex items-center justify-end gap-1">
-                          {!p ? (
+                          {leaseNotStarted ? null : !p ? (
                             <span className="text-xs text-muted-foreground">Generate month first</span>
                           ) : p.excused ? null : p.paid ? (
                             <Button

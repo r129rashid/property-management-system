@@ -18,7 +18,7 @@ async function DashboardContent() {
   const { data: records } = await supabase
     .from("records")
     .select("*")
-    .order("due_date", { ascending: true })
+    .order("due_day", { ascending: true })
 
   const rows: RecordRow[] = records ?? []
 

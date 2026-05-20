@@ -21,6 +21,7 @@ export type Database = {
           rent_amount: number
           due_day: number
           due_date: string | null
+          lease_start: string | null
           amount_paid: boolean
           custom_fields: Json
           created_at: string
@@ -37,6 +38,7 @@ export type Database = {
           rent_amount: number
           due_day: number
           due_date?: string | null
+          lease_start?: string | null
           amount_paid?: boolean
           custom_fields?: Json
           created_at?: string
@@ -53,6 +55,7 @@ export type Database = {
           rent_amount?: number
           due_day?: number
           due_date?: string | null
+          lease_start?: string | null
           amount_paid?: boolean
           custom_fields?: Json
           created_at?: string
