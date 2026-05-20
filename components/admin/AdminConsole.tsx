@@ -135,6 +135,8 @@ export function AdminConsole({ records, userId }: Props) {
       .update({ paid: true, paid_on: today })
       .eq("id", paymentId)
     if (error) { toast.error(error.message); setActionLoading(null); return }
+    // Sync to records table so dashboard/records tab reflects the change
+    await supabase.from("records").update({ amount_paid: true }).eq("id", recordId)
     setPayments((prev) => ({
       ...prev,
       [recordId]: { ...prev[recordId], paid: true, paid_on: today },
@@ -150,6 +152,8 @@ export function AdminConsole({ records, userId }: Props) {
       .update({ paid: false, paid_on: null })
       .eq("id", paymentId)
     if (error) { toast.error(error.message); setActionLoading(null); return }
+    // Sync to records table
+    await supabase.from("records").update({ amount_paid: false }).eq("id", recordId)
     setPayments((prev) => ({
       ...prev,
       [recordId]: { ...prev[recordId], paid: false, paid_on: null },

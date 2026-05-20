@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { KpiCard } from "@/components/dashboard/KpiCard"
-import { RentChart } from "@/components/dashboard/RentChart"
 import { StatusDonut } from "@/components/dashboard/StatusDonut"
 import { UpcomingDues } from "@/components/dashboard/UpcomingDues"
 import { PrivacyProvider } from "@/components/dashboard/PrivacyProvider"
@@ -15,20 +14,23 @@ import type { RecordRow } from "@/types/database"
 async function DashboardContent() {
   const supabase = await createClient()
 
-  const { data: records } = await supabase
-    .from("records")
-    .select("*")
-    .order("due_day", { ascending: true })
+  const now = new Date()
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" })
+
+  const [{ data: records }, { data: rentPayments }] = await Promise.all([
+    supabase.from("records").select("*").order("due_day", { ascending: true }),
+    supabase.from("rent_payments").select("record_id, month, amount_due, paid, excused, notes"),
+  ])
 
   const rows: RecordRow[] = records ?? []
 
-  const now = new Date()
-  const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" })
-
-  const totalProperties = rows.length
-  const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
-
-  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  // Build payment map for current month
+  type PaymentEntry = { record_id: string; amount_due: number; paid: boolean; excused: boolean; notes: string | null }
+  const paymentMap: Record<string, PaymentEntry> = {}
+  for (const p of (rentPayments ?? []).filter((p) => p.month === currentMonthStr)) {
+    if (p.record_id) paymentMap[p.record_id] = p as PaymentEntry
+  }
 
   function getProratedAmount(rec: RecordRow): number {
     if (!rec.lease_start) return rec.rent_amount
@@ -42,41 +44,37 @@ async function DashboardContent() {
     return Math.round((daysActive / daysInMonth) * rec.rent_amount)
   }
 
-  const overdueCount = rows.filter(
-    (r) => getRecordStatus(r.due_day, r.amount_paid) === "overdue"
-  ).length
-
-  const paidCount = rows.filter(
-    (r) => getRecordStatus(r.due_day, r.amount_paid) === "paid"
-  ).length
-  const dueSoonCount = rows.filter(
-    (r) => getRecordStatus(r.due_day, r.amount_paid) === "due-soon"
-  ).length
-
-  const upcoming = rows
-    .filter((r) => getRecordStatus(r.due_day, r.amount_paid) !== "paid")
-    .slice(0, 5)
-
-  // Fetch all rent_payments — used for both KPIs and chart
-  const { data: rentPayments } = await supabase
-    .from("rent_payments")
-    .select("record_id, month, amount_due, paid, excused, notes")
-
-  // Build payment map for current month to refine KPI accuracy
-  type PaymentEntry = { record_id: string; amount_due: number; paid: boolean; excused: boolean; notes: string | null }
-  const paymentMap: Record<string, PaymentEntry> = {}
-  for (const p of (rentPayments ?? []).filter((p) => p.month === currentMonthStr)) {
-    if (p.record_id) paymentMap[p.record_id] = p as PaymentEntry
+  type EffStatus = "paid" | "due-soon" | "overdue" | "excused" | "carried"
+  function effectiveStatus(rec: RecordRow): EffStatus {
+    const p = paymentMap[rec.id]
+    if (p?.excused) return "excused"
+    if (p?.notes === "carried") return "carried"
+    if (p?.paid) return "paid"
+    return getRecordStatus(rec.due_day, rec.amount_paid)
   }
 
-  // Recalculate financials using payment ledger when entries exist
+  const totalProperties = rows.length
+  const totalTenants = new Set(rows.map((r) => r.tenant_name)).size
+
+  const overdueCount = rows.filter((r) => effectiveStatus(r) === "overdue").length
+  const paidCount = rows.filter((r) => effectiveStatus(r) === "paid").length
+  const dueSoonCount = rows.filter((r) => effectiveStatus(r) === "due-soon").length
+
+  const upcoming = rows
+    .filter((r) => {
+      const s = effectiveStatus(r)
+      return s !== "paid" && s !== "excused" && s !== "carried"
+    })
+    .slice(0, 5)
+
+  // Financial KPIs — use ledger when entries exist
   let totalReceivable = 0
   let totalCollected = 0
   for (const rec of rows) {
     const payment = paymentMap[rec.id]
     if (payment) {
-      if (payment.excused) continue // waived — skip entirely
-      if (payment.notes === "carried") continue // debt moved to next month
+      if (payment.excused) continue
+      if (payment.notes === "carried") continue
       totalReceivable += payment.amount_due
       if (payment.paid) totalCollected += payment.amount_due
     } else {
@@ -86,17 +84,6 @@ async function DashboardContent() {
     }
   }
   const totalOutstanding = totalReceivable - totalCollected
-
-  // Last-6-month chart data — sourced from rent_payments
-  const chartData = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
-    const label = d.toLocaleString("default", { month: "short", year: "2-digit" })
-    const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    const collected = (rentPayments ?? [])
-      .filter((p) => p.month === monthStr && p.paid)
-      .reduce((s, p) => s + p.amount_due, 0)
-    return { month: label, collected }
-  })
 
   return (
     <div className="space-y-6">
@@ -148,16 +135,15 @@ async function DashboardContent() {
         />
       </div>
 
-      {/* Charts row */}
+      {/* Status donut */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RentChart data={chartData} />
+        <div className="lg:col-span-1">
+          <StatusDonut
+            paid={paidCount}
+            dueSoon={dueSoonCount}
+            overdue={overdueCount}
+          />
         </div>
-        <StatusDonut
-          paid={paidCount}
-          dueSoon={dueSoonCount}
-          overdue={overdueCount}
-        />
       </div>
 
       {/* Upcoming dues */}
@@ -179,10 +165,7 @@ function DashboardSkeleton() {
           <Skeleton key={i} className="h-28 rounded-xl" />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Skeleton className="lg:col-span-2 h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
-      </div>
+      <Skeleton className="h-64 rounded-xl lg:max-w-sm" />
       <Skeleton className="h-48 rounded-xl" />
     </div>
   )
@@ -191,8 +174,6 @@ function DashboardSkeleton() {
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  // Auth check must be OUTSIDE the Suspense boundary to avoid redirect()
-  // throwing inside a streaming context and reaching the error boundary.
   const supabase = await createClient()
   const {
     data: { user },

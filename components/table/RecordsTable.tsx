@@ -580,6 +580,14 @@ export function RecordsTable({
       .update({ amount_paid: true })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
+    // Sync to rent_payments if an entry exists for current month
+    const payment = currentMonthPayments[id]
+    if (payment && !payment.paid) {
+      const today = new Date().toISOString().split("T")[0]
+      await supabase.from("rent_payments")
+        .update({ paid: true, paid_on: today })
+        .eq("id", payment.id)
+    }
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: true } : r)))
     toast.success("Marked as paid")
     logActivity(`Marked ${rec?.tenant_name} as paid`)
@@ -592,6 +600,13 @@ export function RecordsTable({
       .update({ amount_paid: false })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
+    // Sync to rent_payments if an entry exists for current month
+    const payment = currentMonthPayments[id]
+    if (payment?.paid) {
+      await supabase.from("rent_payments")
+        .update({ paid: false, paid_on: null })
+        .eq("id", payment.id)
+    }
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: false } : r)))
     toast.success("Marked as unpaid")
     logActivity(`Marked ${rec?.tenant_name} as unpaid`)
