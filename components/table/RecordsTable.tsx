@@ -79,10 +79,10 @@ const STATUS_CONFIG = {
 function logActivity(action: string) {
   try {
     const log = JSON.parse(localStorage.getItem("pms_activity_log") ?? "[]") as {
-      action: string
-      ts: string
+      message: string
+      timestamp: string
     }[]
-    log.unshift({ action, ts: new Date().toISOString() })
+    log.unshift({ message: action, timestamp: new Date().toISOString() })
     localStorage.setItem("pms_activity_log", JSON.stringify(log.slice(0, 20)))
   } catch {}
 }

@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock } from "lucide-react"
 
 interface ActivityEntry {
-  message: string
-  timestamp: string
+  message?: string
+  timestamp?: string
+  // legacy field names (pre-fix stored data)
+  action?: string
+  ts?: string
 }
 
 const STORAGE_KEY = "pms_activity_log"
@@ -36,14 +39,23 @@ export function ActivityLog() {
           <p className="text-sm text-muted-foreground">No activity yet.</p>
         ) : (
           <ul className="space-y-2">
-            {entries.map((e, i) => (
-              <li key={i} className="flex items-start justify-between gap-4 text-sm">
-                <span>{e.message}</span>
-                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                  {new Date(e.timestamp).toLocaleString()}
-                </span>
-              </li>
-            ))}
+            {entries.map((e, i) => {
+              const text = e.message ?? e.action ?? ""
+              const tsRaw = e.timestamp ?? e.ts ?? ""
+              const date = tsRaw ? new Date(tsRaw) : null
+              const dateStr =
+                date && !isNaN(date.getTime())
+                  ? date.toLocaleString()
+                  : "Unknown time"
+              return (
+                <li key={i} className="flex items-start justify-between gap-4 text-sm">
+                  <span>{text}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                    {dateStr}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         )}
       </CardContent>

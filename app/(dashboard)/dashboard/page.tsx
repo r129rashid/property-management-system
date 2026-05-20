@@ -12,10 +12,6 @@ import type { RecordRow } from "@/types/database"
 
 async function DashboardContent() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
 
   const { data: records } = await supabase
     .from("records")
@@ -52,7 +48,7 @@ async function DashboardContent() {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
     const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     const collected = rows
-      .filter((r) => r.amount_paid && r.due_date.startsWith(monthStr))
+      .filter((r) => r.amount_paid && r.due_date?.startsWith(monthStr))
       .reduce((s, r) => s + r.rent_amount, 0)
     return { month: label, collected }
   })
@@ -122,7 +118,17 @@ function DashboardSkeleton() {
   )
 }
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic"
+
+export default async function DashboardPage() {
+  // Auth check must be OUTSIDE the Suspense boundary to avoid redirect()
+  // throwing inside a streaming context and reaching the error boundary.
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
   return (
     <div className="space-y-4">
       <div>
