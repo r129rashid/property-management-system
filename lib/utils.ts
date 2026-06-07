@@ -19,7 +19,7 @@ export function maskAadhar(aadhar: string): string {
   return `XXXX-XXXX-${aadhar.slice(8)}`
 }
 
-export type RecordStatus = "paid" | "due-soon" | "overdue"
+export type RecordStatus = "paid" | "upcoming" | "due-soon" | "overdue"
 
 export function getRecordStatus(dueDay: number, amountPaid: boolean): RecordStatus {
   if (amountPaid) return "paid"
@@ -28,7 +28,7 @@ export function getRecordStatus(dueDay: number, amountPaid: boolean): RecordStat
   const thisMonthDue = new Date(today.getFullYear(), today.getMonth(), dueDay)
   if (isBefore(thisMonthDue, today)) return "overdue"
   if (isBefore(thisMonthDue, addDays(today, 6))) return "due-soon"
-  return "due-soon"
+  return "upcoming"
 }
 
 export function formatDueDay(day: number): string {

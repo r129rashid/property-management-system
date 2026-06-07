@@ -86,6 +86,10 @@ const STATUS_CONFIG = {
     label: "Paid",
     cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   },
+  upcoming: {
+    label: "Upcoming",
+    cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
   "due-soon": {
     label: "Due Soon",
     cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -704,8 +708,12 @@ export function RecordsTable({
 
       {/* ── Mobile cards ─────────────────────────────────────────────────── */}
       <div className="md:hidden space-y-3">
-        {filteredRecords.length === 0 ? (
+        {records.length === 0 ? (
           <EmptyState onAdd={() => setShowForm(true)} />
+        ) : filteredRecords.length === 0 ? (
+          <div className="rounded-xl border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
+            No records match the current filter.
+          </div>
         ) : (
           filteredRecords.map((rec) => {
             const status = getEffectiveStatus(rec, currentMonthPayments[rec.id])

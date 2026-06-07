@@ -5,24 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const COLORS = {
   Paid: "#22c55e",
+  Upcoming: "#3b82f6",
   "Due Soon": "#f59e0b",
   Overdue: "#ef4444",
 }
 
 interface StatusDonutProps {
   paid: number
+  upcoming: number
   dueSoon: number
   overdue: number
 }
 
-export function StatusDonut({ paid, dueSoon, overdue }: StatusDonutProps) {
+export function StatusDonut({ paid, upcoming, dueSoon, overdue }: StatusDonutProps) {
   const data = [
     { name: "Paid", value: paid },
+    { name: "Upcoming", value: upcoming },
     { name: "Due Soon", value: dueSoon },
     { name: "Overdue", value: overdue },
   ].filter((d) => d.value > 0)
 
-  const total = paid + dueSoon + overdue
+  const total = paid + upcoming + dueSoon + overdue
 
   return (
     <Card className="rounded-xl h-full">

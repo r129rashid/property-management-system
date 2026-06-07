@@ -44,7 +44,7 @@ async function DashboardContent() {
     return Math.round((daysActive / daysInMonth) * rec.rent_amount)
   }
 
-  type EffStatus = "paid" | "due-soon" | "overdue" | "excused"
+  type EffStatus = "paid" | "upcoming" | "due-soon" | "overdue" | "excused"
   function effectiveStatus(rec: RecordRow): EffStatus {
     const p = paymentMap[rec.id]
     if (p?.excused) return "excused"
@@ -57,6 +57,7 @@ async function DashboardContent() {
   const overdueCount = rows.filter((r) => effectiveStatus(r) === "overdue").length
   const paidCount = rows.filter((r) => effectiveStatus(r) === "paid").length
   const dueSoonCount = rows.filter((r) => effectiveStatus(r) === "due-soon").length
+  const upcomingCount = rows.filter((r) => effectiveStatus(r) === "upcoming").length
 
   const upcoming = rows
     .filter((r) => effectiveStatus(r) !== "paid" && effectiveStatus(r) !== "excused")
@@ -129,6 +130,7 @@ async function DashboardContent() {
         <div className="lg:col-span-1">
           <StatusDonut
             paid={paidCount}
+            upcoming={upcomingCount}
             dueSoon={dueSoonCount}
             overdue={overdueCount}
           />

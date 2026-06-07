@@ -34,12 +34,16 @@ function getMonthLabel(year: number, month: number) {
 }
 
 // Same status logic used in Records table and Dashboard
-type UnifiedStatus = "paid" | "due-soon" | "overdue" | "excused"
+type UnifiedStatus = "paid" | "upcoming" | "due-soon" | "overdue" | "excused"
 
 const STATUS_CONFIG: Record<UnifiedStatus, { label: string; cls: string }> = {
   paid: {
     label: "Paid",
     cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  },
+  upcoming: {
+    label: "Upcoming",
+    cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
   "due-soon": {
     label: "Due Soon",
