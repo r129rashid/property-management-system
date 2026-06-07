@@ -17,7 +17,23 @@
       "Bash(node -e \"require\\('jspdf'\\)\")",
       "Bash(git push *)",
       "Skill(design-review)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(mkdir -p /tmp/pms-deck)",
+      "Read(//tmp/**)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('pptxgenjs'\\);require\\('react-icons/fa'\\);require\\('sharp'\\);console.log\\('deps OK'\\)\")",
+      "Bash(node build.js)",
+      "Bash(python \"/Users/rabirashid/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/03be6218-7716-49cc-bf26-7d40878426c4/cc10dfe8-bd55-44ca-8652-600c4c1bf804/skills/pptx/scripts/office/soffice.py\" --headless --convert-to pdf Abhays-PMS-Feature-Deck.pptx)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(ls \"/Applications/LibreOffice.app/Contents/MacOS/soffice\" 2>/dev/null && echo \"FOUND libreoffice\"; which soffice libreoffice 2>/dev/null; echo \"---pdftoppm---\"; which pdftoppm; echo \"---qlmanage\\(fallback\\)---\"; which qlmanage)",
+      "Bash(ls '/Users/rabirashid/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/03be6218-7716-49cc-bf26-7d40878426c4/cc10dfe8-bd55-44ca-8652-600c4c1bf804/skills/pptx/scripts')",
+      "Bash(qlmanage -t -s 1400 -o . Abhays-PMS-Feature-Deck.pptx)",
+      "Bash(ls -la *.png)",
+      "Bash(python3 -c \"import pptx; print\\('pptx ok'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python3 -)",
+      "Bash(git checkout *)"
     ]
   }
 }

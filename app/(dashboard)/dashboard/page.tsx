@@ -3,13 +3,21 @@ import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { KpiCard } from "@/components/dashboard/KpiCard"
 import { StatusDonut } from "@/components/dashboard/StatusDonut"
+import { IncomeTrend } from "@/components/dashboard/IncomeTrend"
 import { UpcomingDues } from "@/components/dashboard/UpcomingDues"
 import { PrivacyProvider } from "@/components/dashboard/PrivacyProvider"
 import { PrivacyToggle } from "@/components/dashboard/PrivacyToggle"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getRecordStatus, formatCurrency } from "@/lib/utils"
+import {
+  getProratedAmount,
+  isActiveInMonth,
+  lastNMonths,
+  shortMonthLabel,
+} from "@/lib/payments"
+import { ensureCurrentMonthRows } from "@/lib/payments-server"
 import { Building2, Users, IndianRupee, AlertTriangle, Wallet, TrendingDown } from "lucide-react"
-import type { RecordRow } from "@/types/database"
+import type { RecordRow, RentPaymentRow } from "@/types/database"
 
 async function DashboardContent() {
   const supabase = await createClient()
@@ -18,30 +26,30 @@ async function DashboardContent() {
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   const currentMonthLabel = now.toLocaleString("default", { month: "long", year: "numeric" })
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const [{ data: records }, { data: rentPayments }] = await Promise.all([
     supabase.from("records").select("*").order("due_day", { ascending: true }),
-    supabase.from("rent_payments").select("record_id, month, amount_due, paid, excused, notes"),
+    supabase.from("rent_payments").select("*"),
   ])
 
   const rows: RecordRow[] = records ?? []
 
-  // Build payment map for current month
-  type PaymentEntry = { record_id: string; amount_due: number; paid: boolean; excused: boolean; notes: string | null }
-  const paymentMap: Record<string, PaymentEntry> = {}
-  for (const p of (rentPayments ?? []).filter((p) => p.month === currentMonthStr)) {
-    if (p.record_id) paymentMap[p.record_id] = p as PaymentEntry
-  }
+  // Auto-generate this month's ledger rows for active leases (idempotent).
+  const existingThisMonth = new Set(
+    (rentPayments ?? []).filter((p) => p.month === currentMonthStr).map((p) => p.record_id)
+  )
+  const inserted = user
+    ? await ensureCurrentMonthRows(supabase, rows, existingThisMonth, user.id)
+    : []
+  const allPayments: RentPaymentRow[] = [...(rentPayments ?? []), ...inserted]
 
-  function getProratedAmount(rec: RecordRow): number {
-    if (!rec.lease_start) return rec.rent_amount
-    const leaseStartMonth = rec.lease_start.substring(0, 7)
-    if (currentMonthStr !== leaseStartMonth) return rec.rent_amount
-    const [y, m] = currentMonthStr.split("-").map(Number)
-    const daysInMonth = new Date(y, m, 0).getDate()
-    const startDay = parseInt(rec.lease_start.substring(8, 10))
-    const daysActive = daysInMonth - startDay + 1
-    if (daysActive >= daysInMonth) return rec.rent_amount
-    return Math.round((daysActive / daysInMonth) * rec.rent_amount)
+  // Build payment map for current month
+  const paymentMap: Record<string, RentPaymentRow> = {}
+  for (const p of allPayments.filter((p) => p.month === currentMonthStr)) {
+    if (p.record_id) paymentMap[p.record_id] = p
   }
 
   type EffStatus = "paid" | "upcoming" | "due-soon" | "overdue" | "excused"
@@ -72,11 +80,28 @@ async function DashboardContent() {
   for (const rec of rows) {
     const payment = paymentMap[rec.id]
     if (payment?.excused) continue // waived this month
-    const amount = getProratedAmount(rec)
+    const amount = getProratedAmount(rec, currentMonthStr)
     totalReceivable += amount
     if (rec.amount_paid) totalCollected += amount
   }
   const totalOutstanding = totalReceivable - totalCollected
+
+  // 6-month trend — receivable is analytic (from records), collected from the ledger.
+  const paymentByKey = new Map<string, RentPaymentRow>()
+  for (const p of allPayments) paymentByKey.set(`${p.record_id}|${p.month}`, p)
+  const trend = lastNMonths(6).map((m) => {
+    let receivable = 0
+    let collected = 0
+    for (const rec of rows) {
+      if (!isActiveInMonth(rec, m)) continue
+      if (paymentByKey.get(`${rec.id}|${m}`)?.excused) continue
+      receivable += getProratedAmount(rec, m)
+    }
+    for (const p of allPayments) {
+      if (p.month === m && p.paid) collected += p.paid_amount ?? 0
+    }
+    return { month: shortMonthLabel(m), receivable, collected }
+  })
 
   return (
     <div className="space-y-6">
@@ -128,7 +153,7 @@ async function DashboardContent() {
         />
       </div>
 
-      {/* Status donut */}
+      {/* Status donut + income trend */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <StatusDonut
@@ -137,6 +162,9 @@ async function DashboardContent() {
             dueSoon={dueSoonCount}
             overdue={overdueCount}
           />
+        </div>
+        <div className="lg:col-span-2">
+          <IncomeTrend data={trend} />
         </div>
       </div>
 

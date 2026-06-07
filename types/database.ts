@@ -72,6 +72,8 @@ export type Database = {
           amount_due: number
           paid: boolean
           paid_on: string | null
+          paid_amount: number
+          payment_method: string | null
           excused: boolean
           carried_from: string | null
           notes: string | null
@@ -85,6 +87,8 @@ export type Database = {
           amount_due: number
           paid?: boolean
           paid_on?: string | null
+          paid_amount?: number
+          payment_method?: string | null
           excused?: boolean
           carried_from?: string | null
           notes?: string | null
@@ -98,6 +102,8 @@ export type Database = {
           amount_due?: number
           paid?: boolean
           paid_on?: string | null
+          paid_amount?: number
+          payment_method?: string | null
           excused?: boolean
           carried_from?: string | null
           notes?: string | null

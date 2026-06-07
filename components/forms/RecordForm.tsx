@@ -109,7 +109,7 @@ export function RecordForm({
           onSubmit={handleSubmit(handleFormSubmit)}
           className="space-y-4"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="property_name">Property Name</Label>
               <Input
@@ -134,7 +134,7 @@ export function RecordForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="contact_number">Contact (10 digits)</Label>
               <Input
@@ -184,7 +184,7 @@ export function RecordForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="rent_amount">Rent Amount (₹)</Label>
               <Input

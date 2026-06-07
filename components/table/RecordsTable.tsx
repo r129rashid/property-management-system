@@ -29,9 +29,11 @@ import {
   CheckCircle2,
   XCircle,
   History,
+  MessageCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -77,6 +79,13 @@ import {
   formatDate,
 } from "@/lib/utils"
 import { generatePDF } from "@/lib/pdf"
+import {
+  PAYMENT_METHODS,
+  currentMonthStr,
+  monthLabel,
+  getProratedAmount,
+  buildWhatsAppReminder,
+} from "@/lib/payments"
 import type { RecordRow, CustomColumnRow, Json, RentPaymentRow } from "@/types/database"
 import type { RecordFormData } from "@/lib/validations/record"
 
@@ -111,23 +120,30 @@ function getEffectiveStatus(rec: RecordRow, payment?: RentPaymentRow): Effective
   return getRecordStatus(rec.due_day, rec.amount_paid)
 }
 
-// ─── Payment History Dialog ───────────────────────────────────────────────────
+// ─── Payment History + Record Payment Dialog ──────────────────────────────────
 function PaymentHistoryDialog({
   record,
   open,
   onClose,
+  onSync,
 }: {
   record: RecordRow | null
   open: boolean
   onClose: () => void
+  onSync: (recordId: string, paid: boolean) => void
 }) {
   const supabase = createClient()
+  const today = new Date().toISOString().slice(0, 10)
   const [payments, setPayments] = useState<RentPaymentRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [editMonth, setEditMonth] = useState<string | null>(null)
+  const [form, setForm] = useState({ amount: "", date: today, method: "Cash" })
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open || !record) return
     setLoading(true)
+    setEditMonth(null)
     supabase
       .from("rent_payments")
       .select("*")
@@ -139,9 +155,74 @@ function PaymentHistoryDialog({
       })
   }, [open, record?.id])
 
+  const startRecord = (p: RentPaymentRow) => {
+    setForm({ amount: String(p.amount_due), date: today, method: "Cash" })
+    setEditMonth(p.month)
+  }
+
+  const savePayment = async (p: RentPaymentRow) => {
+    if (!record) return
+    const amount = Number(form.amount)
+    if (!amount || amount <= 0) {
+      toast.error("Enter a valid amount")
+      return
+    }
+    setSaving(true)
+    const { error } = await supabase
+      .from("rent_payments")
+      .update({ paid: true, paid_on: form.date, paid_amount: amount, payment_method: form.method })
+      .eq("id", p.id)
+    if (error) {
+      toast.error(error.message)
+      setSaving(false)
+      return
+    }
+    // Keep records.amount_paid (current-month canonical) in sync.
+    if (p.month === currentMonthStr()) {
+      await supabase.from("records").update({ amount_paid: true }).eq("id", record.id)
+      onSync(record.id, true)
+    }
+    setPayments((prev) =>
+      prev.map((x) =>
+        x.id === p.id
+          ? { ...x, paid: true, paid_on: form.date, paid_amount: amount, payment_method: form.method }
+          : x
+      )
+    )
+    logActivity(`Recorded ${formatCurrency(amount)} from ${record.tenant_name} (${monthLabel(p.month)})`)
+    toast.success("Payment recorded")
+    setEditMonth(null)
+    setSaving(false)
+  }
+
+  const clearPayment = async (p: RentPaymentRow) => {
+    if (!record) return
+    setSaving(true)
+    const { error } = await supabase
+      .from("rent_payments")
+      .update({ paid: false, paid_on: null, paid_amount: 0, payment_method: null })
+      .eq("id", p.id)
+    if (error) {
+      toast.error(error.message)
+      setSaving(false)
+      return
+    }
+    if (p.month === currentMonthStr()) {
+      await supabase.from("records").update({ amount_paid: false }).eq("id", record.id)
+      onSync(record.id, false)
+    }
+    setPayments((prev) =>
+      prev.map((x) =>
+        x.id === p.id ? { ...x, paid: false, paid_on: null, paid_amount: 0, payment_method: null } : x
+      )
+    )
+    toast.success("Payment cleared")
+    setSaving(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Payment History</DialogTitle>
           <DialogDescription>
@@ -152,55 +233,119 @@ function PaymentHistoryDialog({
           <div className="text-center text-sm text-muted-foreground py-8">Loading…</div>
         ) : payments.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No payment history yet. Monthly entries appear here once this tenant is excused for a month in the Admin console.
+            No monthly entries yet. They&apos;re created automatically when you open the dashboard.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead className="text-xs">Month</TableHead>
-                <TableHead className="text-xs">Amount Due</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Paid On</TableHead>
-                <TableHead className="text-xs">Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((p) => {
-                let statusLabel = "Unpaid"
-                let statusCls =
-                  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                if (p.paid) {
-                  statusLabel = "Paid"
-                  statusCls =
-                    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                } else if (p.excused) {
-                  statusLabel = "Excused"
-                  statusCls =
-                    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
-                }
-                return (
-                  <TableRow key={p.id} className="border-b border-border/30">
-                    <TableCell className="text-sm font-medium py-3">{p.month}</TableCell>
-                    <TableCell className="text-sm py-3 font-semibold">
-                      {formatCurrency(p.amount_due)}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <Badge className={cn("border-0 text-xs", statusCls)}>
-                        {statusLabel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm py-3 text-muted-foreground">
-                      {p.paid_on ? formatDate(p.paid_on) : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs py-3 text-muted-foreground">
-                      {p.notes ?? "—"}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <div className="space-y-2.5">
+            {payments.map((p) => {
+              const status = p.excused ? "Excused" : p.paid ? "Paid" : "Unpaid"
+              const cls = p.excused
+                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                : p.paid
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+              return (
+                <div key={p.id} className="rounded-xl border border-border/50 bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{monthLabel(p.month)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Due {formatCurrency(p.amount_due)}
+                        {p.paid && ` · Paid ${formatCurrency(p.paid_amount)}`}
+                        {p.paid && p.payment_method ? ` · ${p.payment_method}` : ""}
+                        {p.paid && p.paid_on ? ` · ${formatDate(p.paid_on)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge className={cn("border-0 text-xs", cls)}>{status}</Badge>
+                      {!p.excused && !p.paid && editMonth !== p.month && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                          onClick={() => startRecord(p)}
+                        >
+                          Record
+                        </Button>
+                      )}
+                      {!p.excused && p.paid && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          disabled={saving}
+                          onClick={() => clearPayment(p)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {editMonth === p.month && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-border/40 pt-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Amount (₹)</Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={form.amount}
+                          onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Date</Label>
+                        <Input
+                          type="date"
+                          value={form.date}
+                          onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Method</Label>
+                        <Select
+                          value={form.method}
+                          onValueChange={(v) => setForm((f) => ({ ...f, method: v }))}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_METHODS.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="sm:col-span-3 flex gap-2 justify-end pt-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          onClick={() => setEditMonth(null)}
+                          disabled={saving}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                          onClick={() => savePayment(p)}
+                          disabled={saving}
+                        >
+                          Save payment
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </DialogContent>
     </Dialog>
@@ -421,6 +566,15 @@ export function RecordsTable({
                     <History className="h-3.5 w-3.5 mr-2" />
                     Payment History
                   </DropdownMenuItem>
+                  {isActionable && (
+                    <DropdownMenuItem
+                      className="text-green-600 focus:text-green-600 dark:text-green-400 dark:focus:text-green-400"
+                      onClick={() => handleSendReminder(rec)}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 mr-2" />
+                      Send WhatsApp reminder
+                    </DropdownMenuItem>
+                  )}
                   {isActionable ? (
                     <DropdownMenuItem
                       className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
@@ -545,16 +699,46 @@ export function RecordsTable({
     setDeleteLoading(false)
   }
 
+  // Keep the current month's ledger row in step with the canonical amount_paid flag.
+  // amount_paid stays the source of truth for status; this just mirrors it into the ledger.
+  const syncMonthRow = async (recs: RecordRow[], paid: boolean) => {
+    const month = currentMonthStr()
+    const today = new Date().toISOString().slice(0, 10)
+    const rows = recs.map((r) => {
+      const amount = getProratedAmount(r, month)
+      return {
+        record_id: r.id,
+        user_id: userId,
+        month,
+        amount_due: amount,
+        paid,
+        paid_on: paid ? today : null,
+        paid_amount: paid ? amount : 0,
+      }
+    })
+    await supabase.from("rent_payments").upsert(rows, { onConflict: "record_id,month" })
+  }
+
+  const handleSendReminder = (rec: RecordRow) => {
+    const month = currentMonthStr()
+    const overdue = getRecordStatus(rec.due_day, rec.amount_paid) === "overdue"
+    const amountDue = getProratedAmount(rec, month)
+    window.open(buildWhatsAppReminder(rec, { amountDue, month, overdue }), "_blank")
+    logActivity(`Sent WhatsApp reminder to ${rec.tenant_name}`)
+  }
+
   const handleBulkPaid = async () => {
     const selectedIds = Object.keys(rowSelection)
       .map((i) => filteredRecords[Number(i)]?.id)
       .filter(Boolean) as string[]
     if (!selectedIds.length) return
+    const selectedRecs = records.filter((r) => selectedIds.includes(r.id))
     const { error } = await supabase
       .from("records")
       .update({ amount_paid: true })
       .in("id", selectedIds)
     if (error) { toast.error(error.message); return }
+    await syncMonthRow(selectedRecs, true)
     setRecords((prev) =>
       prev.map((r) => (selectedIds.includes(r.id) ? { ...r, amount_paid: true } : r))
     )
@@ -570,6 +754,7 @@ export function RecordsTable({
       .update({ amount_paid: true })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
+    if (rec) await syncMonthRow([rec], true)
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: true } : r)))
     toast.success("Marked as paid")
     logActivity(`Marked ${rec?.tenant_name} as paid`)
@@ -582,6 +767,7 @@ export function RecordsTable({
       .update({ amount_paid: false })
       .eq("id", id)
     if (error) { toast.error(error.message); return }
+    if (rec) await syncMonthRow([rec], false)
     setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, amount_paid: false } : r)))
     toast.success("Marked as unpaid")
     logActivity(`Marked ${rec?.tenant_name} as unpaid`)
@@ -773,6 +959,15 @@ export function RecordsTable({
                         <History className="h-3.5 w-3.5 mr-2" />
                         Payment History
                       </DropdownMenuItem>
+                      {isActionable && (
+                        <DropdownMenuItem
+                          className="text-green-600 focus:text-green-600 dark:text-green-400 dark:focus:text-green-400"
+                          onClick={() => handleSendReminder(rec)}
+                        >
+                          <MessageCircle className="h-3.5 w-3.5 mr-2" />
+                          Send WhatsApp reminder
+                        </DropdownMenuItem>
+                      )}
                       {isActionable ? (
                         <DropdownMenuItem
                           className="text-emerald-600 focus:text-emerald-600 dark:text-emerald-400 dark:focus:text-emerald-400"
@@ -871,6 +1066,11 @@ export function RecordsTable({
         record={historyRecord}
         open={!!historyRecord}
         onClose={() => setHistoryRecord(null)}
+        onSync={(recordId, paid) =>
+          setRecords((prev) =>
+            prev.map((r) => (r.id === recordId ? { ...r, amount_paid: paid } : r))
+          )
+        }
       />
 
       <ConfirmDialog

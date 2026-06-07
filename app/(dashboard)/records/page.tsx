@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { RecordsTable } from "@/components/table/RecordsTable"
 import { SkeletonTable } from "@/components/shared/SkeletonTable"
+import { ensureCurrentMonthRows } from "@/lib/payments-server"
 import type { RentPaymentRow } from "@/types/database"
 
 async function RecordsContent() {
@@ -21,12 +22,16 @@ async function RecordsContent() {
     supabase.from("rent_payments").select("*").eq("month", currentMonthStr),
   ])
 
+  const recs = records ?? []
+  const existing = new Set((payments ?? []).map((p) => p.record_id))
+  const inserted = await ensureCurrentMonthRows(supabase, recs, existing, user.id)
+
   const paymentMap: Record<string, RentPaymentRow> = {}
-  for (const p of payments ?? []) paymentMap[p.record_id] = p
+  for (const p of [...(payments ?? []), ...inserted]) paymentMap[p.record_id] = p
 
   return (
     <RecordsTable
-      initialRecords={records ?? []}
+      initialRecords={recs}
       customColumns={columns ?? []}
       userId={user.id}
       currentMonthPayments={paymentMap}
