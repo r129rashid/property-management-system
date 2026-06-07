@@ -60,10 +60,8 @@ async function DashboardContent() {
   }
 
   const totalProperties = rows.length
-  // Count distinct people by Aadhar (unique national ID), not by name —
-  // avoids collapsing two same-named tenants or double-counting one
-  // tenant who rents multiple properties.
-  const totalTenants = new Set(rows.map((r) => r.aadhar_number)).size
+  // One tenant per record — matches the Admin console's count.
+  const totalTenants = rows.length
 
   const overdueCount = rows.filter((r) => effectiveStatus(r) === "overdue").length
   const paidCount = rows.filter((r) => effectiveStatus(r) === "paid").length
