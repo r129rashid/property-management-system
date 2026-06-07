@@ -152,7 +152,7 @@ function PaymentHistoryDialog({
           <div className="text-center text-sm text-muted-foreground py-8">Loading…</div>
         ) : payments.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No payment history yet. Use the Admin console to generate monthly entries.
+            No payment history yet. Monthly entries appear here once this tenant is excused for a month in the Admin console.
           </div>
         ) : (
           <Table>
@@ -178,14 +178,6 @@ function PaymentHistoryDialog({
                   statusLabel = "Excused"
                   statusCls =
                     "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
-                } else if (p.notes === "carried") {
-                  statusLabel = "Carried Fwd"
-                  statusCls =
-                    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                } else if (p.carried_from) {
-                  statusLabel = "Carry-in"
-                  statusCls =
-                    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
                 }
                 return (
                   <TableRow key={p.id} className="border-b border-border/30">
@@ -202,7 +194,7 @@ function PaymentHistoryDialog({
                       {p.paid_on ? formatDate(p.paid_on) : "—"}
                     </TableCell>
                     <TableCell className="text-xs py-3 text-muted-foreground">
-                      {p.carried_from ? "Carried from prev. month" : (p.notes ?? "—")}
+                      {p.notes ?? "—"}
                     </TableCell>
                   </TableRow>
                 )
